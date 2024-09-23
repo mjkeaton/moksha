@@ -72,7 +72,9 @@ async fn test_btc_onchain_mint_melt() -> anyhow::Result<()> {
         .with_localstore(localstore)
         .build()
         .await?;
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url).await?;
+    let wallet_keysets = wallet
+        .add_mint_keysets(&mint_url, "sat".to_string())
+        .await?;
     let wallet_keyset = wallet_keysets.first().expect("No keyset found");
 
     // get initial balance
@@ -97,6 +99,7 @@ async fn test_btc_onchain_mint_melt() -> anyhow::Result<()> {
             &PaymentMethod::BtcOnchain,
             Amount(mint_amount),
             mint_quote.quote,
+            CurrencyUnit::Sat,
         )
         .await?;
     let balance = wallet.get_balance().await?;
@@ -165,7 +168,9 @@ async fn test_bolt11_mint() -> anyhow::Result<()> {
         .with_localstore(localstore)
         .build()
         .await?;
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url).await?;
+    let wallet_keysets = wallet
+        .add_mint_keysets(&mint_url, "sat".to_string())
+        .await?;
     let wallet_keyset = wallet_keysets.first().unwrap(); // FIXME
 
     // get initial balance
@@ -184,6 +189,7 @@ async fn test_bolt11_mint() -> anyhow::Result<()> {
             &PaymentMethod::Bolt11,
             mint_amount.into(),
             hash.clone(),
+            CurrencyUnit::Sat,
         )
         .await?;
     assert_eq!(6_000, mint_result.total_amount());
@@ -260,7 +266,9 @@ async fn test_bolt11_send() -> anyhow::Result<()> {
         .with_localstore(localstore)
         .build()
         .await?;
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url).await?;
+    let wallet_keysets = wallet
+        .add_mint_keysets(&mint_url, "sat".to_string())
+        .await?;
     let wallet_keyset = wallet_keysets.first().unwrap(); // FIXME
 
     // get initial balance
@@ -279,6 +287,7 @@ async fn test_bolt11_send() -> anyhow::Result<()> {
             &PaymentMethod::Bolt11,
             mint_amount.into(),
             hash.clone(),
+            CurrencyUnit::Sat,
         )
         .await?;
     assert_eq!(2_000, mint_result.total_amount());

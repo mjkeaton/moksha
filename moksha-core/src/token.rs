@@ -12,6 +12,7 @@ use url::Url;
 use crate::{error::MokshaCoreError, primitives::CurrencyUnit, proof::Proofs};
 
 const TOKEN_PREFIX_V3: &str = "cashuA";
+const TOKEN_PREFIX_BITCREDIT: &str = "bitcr";
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,20 +99,54 @@ impl TokenV3 {
         )
     }
 
-    pub fn serialize(&self) -> Result<String, MokshaCoreError> {
+    pub fn serialize(
+        &self,
+        currency_unit: Option<CurrencyUnit>,
+    ) -> Result<String, MokshaCoreError> {
         let json = serde_json::to_string(&self)?;
-        Ok(format!(
-            "{}{}",
-            TOKEN_PREFIX_V3,
-            general_purpose::URL_SAFE.encode(json.as_bytes())
-        ))
+
+        match currency_unit {
+            Some(CurrencyUnit::CrSat) => Ok(format!(
+                "{}{}",
+                TOKEN_PREFIX_BITCREDIT,
+                general_purpose::URL_SAFE.encode(json.as_bytes())
+            )),
+            Some(_) => Ok(format!(
+                "{}{}",
+                TOKEN_PREFIX_V3,
+                general_purpose::URL_SAFE.encode(json.as_bytes())
+            )),
+            None => Ok(format!(
+                "{}{}",
+                TOKEN_PREFIX_V3,
+                general_purpose::URL_SAFE.encode(json.as_bytes())
+            )),
+        }
     }
 
-    pub fn deserialize(data: impl Into<String>) -> Result<Self, MokshaCoreError> {
+    pub fn deserialize(
+        data: impl Into<String>,
+        currency_unit: Option<CurrencyUnit>,
+    ) -> Result<Self, MokshaCoreError> {
         let data = data.into();
-        let token = data
-            .strip_prefix(TOKEN_PREFIX_V3)
-            .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+        let mut token;
+        match currency_unit {
+            Some(CurrencyUnit::CrSat) => {
+                token = data
+                    .strip_prefix(TOKEN_PREFIX_BITCREDIT)
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+            }
+            Some(_) => {
+                token = data
+                    .strip_prefix(TOKEN_PREFIX_V3)
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+            }
+            None => {
+                token = data
+                    .strip_prefix(TOKEN_PREFIX_V3)
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+            }
+        }
 
         let json = general_purpose::URL_SAFE_NO_PAD
             .decode(token.as_bytes())
@@ -133,7 +168,7 @@ impl TryFrom<TokenV3> for String {
     type Error = MokshaCoreError;
 
     fn try_from(token: TokenV3) -> Result<Self, Self::Error> {
-        token.serialize()
+        token.serialize(token.currency_unit.clone())
     }
 }
 
@@ -141,7 +176,7 @@ impl TryFrom<String> for TokenV3 {
     type Error = MokshaCoreError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::deserialize(value)
+        Self::deserialize(value, None)
     }
 }
 
@@ -149,7 +184,7 @@ impl FromStr for TokenV3 {
     type Err = MokshaCoreError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::deserialize(s)
+        Self::deserialize(s, None)
     }
 }
 
@@ -228,11 +263,11 @@ mod tests {
             Some(Url::parse("https://8333.space:3338")?)
         );
         assert_eq!(token.tokens[0].proofs.len(), 2);
-        assert_eq!(token.currency_unit, Some(CurrencyUnit::Sat));
+        assert_eq!(token.currency_unit.clone(), Some(CurrencyUnit::Sat));
         assert_eq!(token.memo, Some("Thank you.".to_string()));
         assert_eq!(token.total_amount(), 10);
 
-        let token_serialized = token.serialize()?;
+        let token_serialized = token.serialize(token.currency_unit.clone())?;
         let fixture = read_fixture("token_nut_example.cashu")?;
         assert_eq!(token_serialized, fixture);
         Ok(())
@@ -314,7 +349,7 @@ mod tests {
     #[test]
     fn test_tokens_deserialize_no_pad() -> anyhow::Result<()> {
         let input = read_fixture("token_no_pad60.cashu")?;
-        let tokens = TokenV3::deserialize(input)?;
+        let tokens = TokenV3::deserialize(input, None)?;
         assert_eq!(tokens.memo, None);
         assert_eq!(tokens.tokens.len(), 1);
         Ok(())
@@ -323,7 +358,7 @@ mod tests {
     #[test]
     fn test_tokens_deserialize_with_padding() -> anyhow::Result<()> {
         let input = read_fixture("token_60.cashu")?;
-        let tokens = TokenV3::deserialize(input)?;
+        let tokens = TokenV3::deserialize(input, None)?;
         assert_eq!(tokens.tokens.len(), 1);
         Ok(())
     }
@@ -331,7 +366,7 @@ mod tests {
     #[test]
     fn test_tokens_deserialize_invalid() -> anyhow::Result<()> {
         let input = read_fixture("token_invalid.cashu")?;
-        let tokens = TokenV3::deserialize(input);
+        let tokens = TokenV3::deserialize(input, None);
         assert!(tokens.is_err());
         Ok(())
     }

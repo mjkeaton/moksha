@@ -700,6 +700,7 @@ where
         payment_method: &PaymentMethod,
         amount: Amount,
         quote_id: String,
+        currency_unit: CurrencyUnit,
     ) -> Result<TokenV3, MokshaWalletError> {
         let split_amount = amount.split();
 
@@ -789,7 +790,7 @@ where
             .collect::<Vec<Proof>>()
             .into();
 
-        let tokens: TokenV3 = (wallet_keyset.mint_url.to_owned(), proofs).into();
+        let tokens: TokenV3 = (wallet_keyset.mint_url.to_owned(), currency_unit, proofs).into();
         let mut tx = self.localstore.begin_tx().await?;
         self.localstore
             .add_proofs(&mut tx, &tokens.proofs())
@@ -1060,6 +1061,7 @@ mod tests {
                 &PaymentMethod::Bolt11,
                 20.into(),
                 "hash".to_string(),
+                CurrencyUnit::Sat,
             )
             .await?;
         assert_eq!(20, result.total_amount());

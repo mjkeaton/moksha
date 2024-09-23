@@ -17,7 +17,10 @@ async fn main() -> anyhow::Result<()> {
         .build()
         .await?;
     let wallet_keysets = wallet
-        .add_mint_keysets(&Url::parse("https://mint.mutinynet.moksha.cash")?)
+        .add_mint_keysets(
+            &Url::parse("https://mint.mutinynet.moksha.cash")?,
+            "sat".to_string(),
+        )
         .await?;
     let wallet_keyset = wallet_keysets.first().unwrap();
     // FIXME add better filtering by CurrencyUnit

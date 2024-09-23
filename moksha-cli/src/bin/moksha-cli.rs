@@ -95,7 +95,9 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::AddMint { mint_url } => {
-            wallet.add_mint_keysets(&mint_url).await?;
+            wallet
+                .add_mint_keysets(&mint_url, "sat".to_string())
+                .await?;
             term.write_line("Mint added successfully ")?;
         }
         Command::Info => {
@@ -151,7 +153,9 @@ async fn main() -> anyhow::Result<()> {
                     return Ok(());
                 }
 
-                wallet.add_mint_keysets(&token_mint_url).await?;
+                wallet
+                    .add_mint_keysets(&token_mint_url, "sat".to_string())
+                    .await?;
             }
 
             let wallet_keysets = wallet.get_wallet_keysets().await?;
@@ -439,7 +443,13 @@ async fn main() -> anyhow::Result<()> {
                 // FIXME store quote in db and add option to retry minting later
 
                 let mint_result = wallet
-                    .mint_tokens(wallet_keyset, &payment_method, amount.into(), quote.clone())
+                    .mint_tokens(
+                        wallet_keyset,
+                        &payment_method,
+                        amount.into(),
+                        quote.clone(),
+                        CurrencyUnit::Sat,
+                    )
                     .await;
 
                 match mint_result {

@@ -55,7 +55,9 @@ pub async fn test_bolt11_lnbitsmock() -> anyhow::Result<()> {
         .with_localstore(localstore)
         .build()
         .await?;
-    let wallet_keysets = wallet.add_mint_keysets(&mint_url).await?;
+    let wallet_keysets = wallet
+        .add_mint_keysets(&mint_url, "sat".to_string())
+        .await?;
     let wallet_keyset = wallet_keysets.first().unwrap(); // FIXME
 
     // get initial balance
@@ -74,6 +76,7 @@ pub async fn test_bolt11_lnbitsmock() -> anyhow::Result<()> {
             &PaymentMethod::Bolt11,
             mint_amount.into(),
             hash.clone(),
+            CurrencyUnit::Sat,
         )
         .await?;
     assert_eq!(6_000, mint_result.total_amount());
