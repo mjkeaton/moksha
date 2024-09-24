@@ -318,7 +318,7 @@ where
 
         let mint_keysets = self
             .client
-            .get_keysets_by_id(mint_url, unit.clone(), id)
+            .get_keysets_by_id(mint_url, unit.clone(), id.clone())
             .await?;
 
         let mut tx = self.localstore.begin_tx().await?;
