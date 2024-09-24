@@ -61,6 +61,12 @@ pub trait Database {
         quote: &Bolt11MintQuote,
     ) -> Result<(), MokshaMintError>;
 
+    async fn get_bitcredit_request_to_mint(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        id: &String,
+    ) -> Result<BitcreditRequestToMint, MokshaMintError>;
+
     async fn get_bitcredit_mint_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
@@ -81,6 +87,13 @@ pub trait Database {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
         request_to_mint: &BitcreditRequestToMint,
+    ) -> Result<(), MokshaMintError>;
+
+    async fn add_mint_keyset(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset_id: &String,
+        keyset_public_key: &String,
     ) -> Result<(), MokshaMintError>;
 
     async fn check_bitcredit_quote(

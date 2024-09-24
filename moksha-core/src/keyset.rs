@@ -43,6 +43,17 @@ impl MintKeyset {
             mint_pubkey: derive_pubkey(seed).expect("invalid seed"),
         }
     }
+
+    pub fn new_with_id(master_key: &str, derivation_path: &str, id: String) -> Self {
+        let priv_keys = derive_keys(master_key, derivation_path);
+        let pub_keys = derive_pubkeys(&priv_keys);
+        Self {
+            private_keys: priv_keys,
+            keyset_id: id,
+            public_keys: pub_keys,
+            mint_pubkey: derive_pubkey(master_key).expect("invalid seed"),
+        }
+    }
 }
 
 // FIXME rename to keysets

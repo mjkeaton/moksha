@@ -4,10 +4,10 @@ use crate::routes::btconchain::{
     post_mint_quote_btconchain,
 };
 use crate::routes::default::{
-    check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keysets, get_melt_quote_bolt11,
-    get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11, post_melt_quote_bolt11,
-    post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit, post_mint_quote_bolt11,
-    post_request_to_mint_bitcredit, post_swap,
+    check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keysets, get_keysets_by_id,
+    get_melt_quote_bolt11, get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11,
+    post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit,
+    post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap,
 };
 use axum::extract::Request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
@@ -100,6 +100,7 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
         crate::routes::default::get_keys,
         crate::routes::default::get_keys_by_id,
         crate::routes::default::get_keysets,
+        crate::routes::default::get_keysets_by_id,
         crate::routes::default::post_mint_bolt11,
         crate::routes::default::post_mint_bitcredit,
         crate::routes::default::post_mint_quote_bolt11,
@@ -177,6 +178,7 @@ fn app(mint: Mint) -> Router {
         .route("/v1/keys/:unit", get(get_keys))
         .route("/v1/keys/:id/:unit", get(get_keys_by_id))
         .route("/v1/keysets/:unit", get(get_keysets))
+        .route("/v1/keysets/:unit/:id", get(get_keysets_by_id))
         .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
         .route("/v1/mint/quote/bitcredit", post(post_mint_quote_bitcredit))
         .route(

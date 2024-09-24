@@ -129,7 +129,7 @@ impl TokenV3 {
         currency_unit: Option<CurrencyUnit>,
     ) -> Result<Self, MokshaCoreError> {
         let data = data.into();
-        let mut token;
+        let token;
         match currency_unit {
             Some(CurrencyUnit::CrSat) => {
                 token = data

@@ -185,6 +185,12 @@ pub struct ParamsBitcreditQuoteCheck {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ParamsBitcreditGetKeysetsById {
+    pub id: String,
+    pub unit: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ParamsGetKeys {
     pub id: String,
     pub unit: String,

@@ -305,6 +305,71 @@ where
         Ok(result)
     }
 
+    /// Stores the mints key in the localstore
+    pub async fn add_mint_keysets_by_id(
+        &self,
+        mint_url: &Url,
+        unit: String,
+        id: String,
+    ) -> Result<Vec<WalletKeyset>, MokshaWalletError> {
+        if !self.client.is_v1_supported(mint_url).await? {
+            return Err(MokshaWalletError::UnsupportedApiVersion);
+        }
+
+        let mint_keysets = self
+            .client
+            .get_keysets_by_id(mint_url, unit.clone(), id)
+            .await?;
+
+        let mut tx = self.localstore.begin_tx().await?;
+        let mut result = vec![];
+        for keyset in mint_keysets.keysets.iter() {
+            let keysets = self
+                .client
+                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone())
+                .await;
+
+            let public_keys = match keysets {
+                Ok(k) => k
+                    .keysets
+                    .into_iter()
+                    .find(|k| k.id == keyset.id && k.unit == keyset.unit)
+                    .expect("no valid keyset found")
+                    .keys
+                    .clone(),
+                Err(_) => {
+                    //println!("Ignoring keyset without public_keys {:?}", keyset.id);
+                    continue;
+                }
+            };
+
+            // ignore legacy keysets
+            let keyset_id = match KeysetId::new(&keyset.id) {
+                Ok(id) => id,
+                Err(_) => {
+                    //println!("Ignoring legacy keyset {:?}", keyset.id);
+                    continue;
+                }
+            };
+
+            let wallet_keyset = WalletKeyset::new(
+                &keyset_id,
+                mint_url,
+                &keyset.unit,
+                0,
+                public_keys,
+                keyset.active,
+            );
+
+            result.push(wallet_keyset.clone());
+            self.localstore
+                .upsert_keyset(&mut tx, &wallet_keyset)
+                .await?;
+        }
+        tx.commit().await?;
+        Ok(result)
+    }
+
     pub async fn get_balance(&self) -> Result<u64, MokshaWalletError> {
         let mut tx = self.localstore.begin_tx().await?;
         let total_amount = self.localstore.get_proofs(&mut tx).await?.total_amount();

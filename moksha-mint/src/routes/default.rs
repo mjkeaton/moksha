@@ -24,12 +24,13 @@ use crate::{
     mint::Mint,
 };
 use chrono::{Duration, Utc};
+use moksha_core::keyset::MintKeyset;
 use moksha_core::primitives::{
     BillKeys, BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint,
-    CheckBitcreditQuoteResponse, ParamsBitcreditQuoteCheck, ParamsGetKeys,
-    PostMintBitcreditRequest, PostMintBitcreditResponse, PostMintQuoteBitcreditRequest,
-    PostMintQuoteBitcreditResponse, PostRequestToMintBitcreditRequest,
-    PostRequestToMintBitcreditResponse,
+    CheckBitcreditQuoteResponse, ParamsBitcreditGetKeysetsById, ParamsBitcreditQuoteCheck,
+    ParamsGetKeys, PostMintBitcreditRequest, PostMintBitcreditResponse,
+    PostMintQuoteBitcreditRequest, PostMintQuoteBitcreditResponse,
+    PostRequestToMintBitcreditRequest, PostRequestToMintBitcreditResponse,
 };
 use std::str::FromStr;
 
@@ -124,9 +125,48 @@ pub async fn get_keysets(
     State(mint): State<Mint>,
 ) -> Result<Json<Keysets>, MokshaMintError> {
     Ok(Json(Keysets::new(
-        //TODO keyset from bill id
         mint.keyset.keyset_id,
         CurrencyUnit::from(unit),
+        true,
+    )))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/keysets/{unit}/{id}",
+    responses(
+            (status = 200, description = "get keysets for special bill", body = [Keysets])
+    ),
+    params(
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
+#[instrument(skip(mint), err)]
+pub async fn get_keysets_by_id(
+    params: Path<ParamsBitcreditGetKeysetsById>,
+    State(mint): State<Mint>,
+) -> Result<Json<Keysets>, MokshaMintError> {
+    let mut tx = mint.db.begin_tx().await?;
+    let request_to_mint = &mint
+        .db
+        .get_bitcredit_request_to_mint(&mut tx, &params.id)
+        .await?;
+
+    let keys = MintKeyset::new_with_id(
+        request_to_mint.bill_key.as_str(),
+        String::default().as_str(),
+        params.id.clone(),
+    );
+
+    mint.db
+        .add_mint_keyset(&mut tx, &keys.keyset_id, &keys.mint_pubkey.to_string())
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(Json(Keysets::new(
+        keys.keyset_id,
+        CurrencyUnit::from(params.unit.clone()),
         true,
     )))
 }
@@ -190,8 +230,6 @@ pub async fn post_mint_quote_bitcredit(
     mint.db.add_bitcredit_mint_quote(&mut tx, &quote).await?;
     tx.commit().await?;
     Ok(Json(quote.into()))
-
-    //TODO create new keyset???
 }
 
 #[utoipa::path(

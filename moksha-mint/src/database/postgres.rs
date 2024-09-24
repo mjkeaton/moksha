@@ -185,6 +185,25 @@ impl Database for PostgresDB {
     }
 
     #[instrument(level = "debug", skip(self), err)]
+    async fn get_bitcredit_request_to_mint(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        id: &String,
+    ) -> Result<BitcreditRequestToMint, MokshaMintError> {
+        let request_to_mint: BitcreditRequestToMint = sqlx::query!(
+            "SELECT bill_id, bill_key FROM bitcredit_requests_to_mint WHERE bill_id = $1",
+            id
+        )
+        .map(|row| BitcreditRequestToMint {
+            bill_id: row.bill_id,
+            bill_key: row.bill_key,
+        })
+        .fetch_one(&mut **tx)
+        .await?;
+        Ok(request_to_mint)
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
     async fn check_bitcredit_quote(
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
@@ -304,6 +323,23 @@ impl Database for PostgresDB {
             "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key) VALUES ($1, $2)",
             request_to_mint.bill_id,
             request_to_mint.bill_key,
+        )
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn add_mint_keyset(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset_id: &String,
+        keyset_public_key: &String,
+    ) -> Result<(), MokshaMintError> {
+        sqlx::query!(
+            "INSERT INTO mint_keysets (keyset_id, keyset_public_key) VALUES ($1, $2)",
+            keyset_id,
+            keyset_public_key,
         )
         .execute(&mut **tx)
         .await?;
