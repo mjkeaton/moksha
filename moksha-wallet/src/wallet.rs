@@ -338,7 +338,7 @@ where
                     .keys
                     .clone(),
                 Err(_) => {
-                    //println!("Ignoring keyset without public_keys {:?}", keyset.id);
+                    println!("Ignoring keyset without public_keys {:?}", keyset.id);
                     continue;
                 }
             };
@@ -347,7 +347,7 @@ where
             let keyset_id = match KeysetId::new(&keyset.id) {
                 Ok(id) => id,
                 Err(_) => {
-                    //println!("Ignoring legacy keyset {:?}", keyset.id);
+                    println!("Ignoring legacy keyset {:?}", keyset.id);
                     continue;
                 }
             };
