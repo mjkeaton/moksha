@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use std::str::FromStr;
 use async_trait::async_trait;
 use moksha_core::keyset::KeysetId;
 use moksha_core::proof::{Proof, Proofs};
@@ -123,8 +123,9 @@ impl LocalStore for SqliteLocalStore {
             .map(|row| {
                 let id: i64 = row.id;
                 let mint_url: Url = Url::parse(&row.mint_url).expect("invalid URL in localstore");
-                let keyset_id: KeysetId =
-                    KeysetId::new(&row.keyset_id).expect("invalid keyset_id in localstore");
+                let keyset_id = KeysetId::from_str(row.keyset_id.clone().as_str()).expect("Can't receive keyset_id from id");
+                // let keyset_id: KeysetId =
+                //     KeysetId::new(&row.keyset_id).expect("invalid keyset_id in localstore");
                 let currency_unit: String = row.currency_unit.clone();
                 let active: bool = row.active;
                 let last_index: i64 = row.last_index;
