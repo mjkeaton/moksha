@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO mint_keysets (keyset_id, keyset_public_key) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dbc0898e460debdc91fbf1f085f9793e4dc11356b5666c415436e7a67bafe043"
+}

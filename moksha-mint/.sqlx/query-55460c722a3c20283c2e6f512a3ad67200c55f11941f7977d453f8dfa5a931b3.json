@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT bill_id, bill_key FROM bitcredit_requests_to_mint WHERE bill_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bill_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "bill_key",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "55460c722a3c20283c2e6f512a3ad67200c55f11941f7977d453f8dfa5a931b3"
+}
