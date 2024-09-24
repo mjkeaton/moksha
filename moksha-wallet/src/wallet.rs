@@ -343,8 +343,7 @@ where
                 }
             };
 
-            let keyset_id = KeysetId::from_str(id.as_str()).expect("Can't receive keyset_id from id");
-
+            let keyset_id = KeysetId::from_str(id.clone().as_str()).expect("Can't receive keyset_id from id");
             // ignore legacy keysets
             // let keyset_id = match KeysetId::new(&keyset.id) {
             //     Ok(id) => id,
