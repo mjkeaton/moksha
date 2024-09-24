@@ -13,6 +13,7 @@
 use hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
 use utoipa::ToSchema;
 
 use bitcoin_hashes::{sha256, Hash};
@@ -92,6 +93,15 @@ impl Keysets {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct KeysetId(KeysetIdType, String);
+
+impl FromStr for KeysetId {
+    type Err = &'static str;
+
+    fn from_str(id: &str) -> Result<Self, Self::Err> {
+        let id_type = KeysetIdType::from(id[0..2].to_string());
+        Ok(Self(id_type, id.to_owned()))
+    }
+}
 
 impl KeysetId {
     // FIXME implement fromString
