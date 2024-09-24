@@ -343,14 +343,16 @@ where
                 }
             };
 
+            let keyset_id = KeysetId::from_str(id.as_str()).expect("Can't receive keyset_id from id");
+
             // ignore legacy keysets
-            let keyset_id = match KeysetId::new(&keyset.id) {
-                Ok(id) => id,
-                Err(_) => {
-                    println!("Ignoring legacy keyset {:?}", keyset.id);
-                    continue;
-                }
-            };
+            // let keyset_id = match KeysetId::new(&keyset.id) {
+            //     Ok(id) => id,
+            //     Err(_) => {
+            //         println!("Ignoring legacy keyset {:?}", keyset.id);
+            //         continue;
+            //     }
+            // };
 
             let wallet_keyset = WalletKeyset::new(
                 &keyset_id,
