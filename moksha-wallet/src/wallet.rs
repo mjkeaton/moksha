@@ -326,7 +326,7 @@ where
         for keyset in mint_keysets.keysets.iter() {
             let keysets = self
                 .client
-                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone())
+                .get_keys_by_id(mint_url, id.clone(), unit.clone())
                 .await;
 
             let public_keys = match keysets {
@@ -342,8 +342,6 @@ where
                     continue;
                 }
             };
-
-            // let keyset_id = KeysetId::from_str(id.clone().as_str()).expect("Can't receive keyset_id from id");
 
             // ignore legacy keysets
             let keyset_id = match KeysetId::new(&keyset.id) {
