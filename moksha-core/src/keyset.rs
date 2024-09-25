@@ -13,7 +13,6 @@
 use hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::str::FromStr;
 use utoipa::ToSchema;
 
 use bitcoin_hashes::{sha256, Hash};
@@ -94,19 +93,10 @@ impl Keysets {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct KeysetId(KeysetIdType, String);
 
-impl FromStr for KeysetId {
-    type Err = &'static str;
-
-    fn from_str(id: &str) -> Result<Self, Self::Err> {
-        let id_type = KeysetIdType::from("00".to_string());
-        let id = id[2..].to_string();
-        Ok(Self(id_type, id.to_owned()))
-    }
-}
-
 impl KeysetId {
     // FIXME implement fromString
     pub fn new(id: &str) -> Result<Self, MokshaCoreError> {
+        //TODO: find way how to check if it is Bitcredit quote
 
         // if id.len() != 16 {
         //     return Err(MokshaCoreError::InvalidKeysetid);
@@ -127,8 +117,6 @@ impl KeysetId {
         self.0.clone()
     }
 }
-
-
 
 impl ToString for KeysetId {
     fn to_string(&self) -> String {
