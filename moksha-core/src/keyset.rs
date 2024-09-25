@@ -50,7 +50,7 @@ impl MintKeyset {
         let pub_keys = derive_pubkeys(&priv_keys);
         Self {
             private_keys: priv_keys,
-            keyset_id: id,
+            keyset_id: format!("00{}", id),
             public_keys: pub_keys,
             mint_pubkey: derive_pubkey(master_key).expect("invalid seed"),
         }
@@ -107,9 +107,10 @@ impl FromStr for KeysetId {
 impl KeysetId {
     // FIXME implement fromString
     pub fn new(id: &str) -> Result<Self, MokshaCoreError> {
-        if id.len() != 16 {
-            return Err(MokshaCoreError::InvalidKeysetid);
-        }
+
+        // if id.len() != 16 {
+        //     return Err(MokshaCoreError::InvalidKeysetid);
+        // }
         let id_type = KeysetIdType::from(id[0..2].to_string());
         let id = id[2..].to_string();
         Ok(Self(id_type, id.to_owned()))
@@ -126,6 +127,8 @@ impl KeysetId {
         self.0.clone()
     }
 }
+
+
 
 impl ToString for KeysetId {
     fn to_string(&self) -> String {
