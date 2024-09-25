@@ -99,6 +99,7 @@ impl FromStr for KeysetId {
 
     fn from_str(id: &str) -> Result<Self, Self::Err> {
         let id_type = KeysetIdType::from("00".to_string());
+        let id = id[2..].to_string();
         Ok(Self(id_type, id.to_owned()))
     }
 }
