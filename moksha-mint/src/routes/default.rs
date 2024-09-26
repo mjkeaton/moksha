@@ -33,6 +33,7 @@ use moksha_core::primitives::{
     PostRequestToMintBitcreditRequest, PostRequestToMintBitcreditResponse,
 };
 use std::str::FromStr;
+use tracing::log::error;
 
 #[utoipa::path(
         post,
@@ -96,17 +97,42 @@ pub async fn get_keys_by_id(
     params: Path<ParamsGetKeys>,
     State(mint): State<Mint>,
 ) -> Result<Json<KeysResponse>, MokshaMintError> {
-    if params.id != mint.keyset.keyset_id {
-        return Err(MokshaMintError::KeysetNotFound(params.id.clone()));
-    }
+    if CurrencyUnit::from(params.unit.clone()).eq(&CurrencyUnit::CrSat) {
+        //TODO: add check if this keyset exist in database
+        let mut tx = mint.db.begin_tx().await?;
+        let request_to_mint = &mint
+            .db
+            .get_bitcredit_request_to_mint(&mut tx, &params.id)
+            .await?;
 
-    Ok(Json(KeysResponse {
-        keysets: vec![KeyResponse {
-            id: mint.keyset.keyset_id.clone(),
-            unit: CurrencyUnit::from(params.unit.clone()),
-            keys: mint.keyset.public_keys,
-        }],
-    }))
+        let keys = MintKeyset::new_with_id(
+            request_to_mint.bill_key.as_str(),
+            String::default().as_str(),
+            params.id.clone(),
+        );
+
+        tx.commit().await?;
+
+        Ok(Json(KeysResponse {
+            keysets: vec![KeyResponse {
+                id: keys.keyset_id.clone(),
+                unit: CurrencyUnit::from(params.unit.clone()),
+                keys: keys.public_keys,
+            }],
+        }))
+    } else {
+        if params.id != mint.keyset.keyset_id {
+            return Err(MokshaMintError::KeysetNotFound(params.id.clone()));
+        }
+
+        Ok(Json(KeysResponse {
+            keysets: vec![KeyResponse {
+                id: mint.keyset.keyset_id.clone(),
+                unit: CurrencyUnit::from(params.unit.clone()),
+                keys: mint.keyset.public_keys,
+            }],
+        }))
+    }
 }
 
 #[utoipa::path(
@@ -131,6 +157,7 @@ pub async fn get_keysets(
     )))
 }
 
+//Bitcredit specific function
 #[utoipa::path(
     get,
     path = "/v1/keysets/{unit}/{id}",
@@ -158,9 +185,16 @@ pub async fn get_keysets_by_id(
         params.id.clone(),
     );
 
-    mint.db
+    match mint
+        .db
         .add_mint_keyset(&mut tx, &keys.keyset_id, &keys.mint_pubkey.to_string())
-        .await?;
+        .await
+    {
+        Err(e) => {
+            error!("{}", e);
+        }
+        _ => {}
+    }
 
     tx.commit().await?;
 
