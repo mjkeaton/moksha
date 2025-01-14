@@ -40,8 +40,8 @@ where
     C: CashuClient,
 {
     client: C,
-    pub dhke: Dhke,
-    pub localstore: L,
+    dhke: Dhke,
+    localstore: L,
     secret: DeterministicSecret,
 }
 
@@ -352,15 +352,13 @@ where
                 }
             };
 
-            //this is test data
-            let wallet_keyset = WalletKeyset::new_with_maturity_date(
+            let wallet_keyset = WalletKeyset::new(
                 &keyset_id,
                 mint_url,
                 &keyset.unit,
                 0,
                 public_keys,
                 keyset.active,
-                1223123u64,
             );
 
             result.push(wallet_keyset.clone());
@@ -606,7 +604,7 @@ where
         Ok(melt_response)
     }
 
-    pub async fn create_secrets(
+    async fn create_secrets(
         &self,
         keyset_id: &KeysetId,
         amount: u32,
