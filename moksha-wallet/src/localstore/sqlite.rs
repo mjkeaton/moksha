@@ -127,7 +127,7 @@ impl LocalStore for SqliteLocalStore {
                     KeysetId::new(&row.keyset_id).expect("invalid keyset_id in localstore");
                 let currency_unit: String = row.currency_unit.clone();
                 let active: bool = row.active;
-                let maturity_date: Option<u64> = row.maturity_date;
+                let maturity_date: Option<i64> = row.maturity_date;
                 let last_index: i64 = row.last_index;
                 let public_keys: String = row.public_keys.clone();
                 let public_keys: HashMap<u64, PublicKey> =

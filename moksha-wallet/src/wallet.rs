@@ -360,7 +360,7 @@ where
                 0,
                 public_keys,
                 keyset.active,
-                1223123u64,
+                1223123i64,
             );
 
             result.push(wallet_keyset.clone());

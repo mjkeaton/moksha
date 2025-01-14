@@ -24,7 +24,7 @@ pub struct WalletKeyset {
     pub last_index: u64,
     pub public_keys: HashMap<u64, PublicKey>,
     pub active: bool,
-    pub maturity_date: Option<u64>,
+    pub maturity_date: Option<i64>,
 }
 
 impl WalletKeysetFilter for Vec<WalletKeyset> {
@@ -66,7 +66,7 @@ impl WalletKeyset {
         last_index: u64,
         public_keys: HashMap<u64, PublicKey>,
         active: bool,
-        maturity_date: u64,
+        maturity_date: i64,
     ) -> Self {
         Self {
             id: None,
