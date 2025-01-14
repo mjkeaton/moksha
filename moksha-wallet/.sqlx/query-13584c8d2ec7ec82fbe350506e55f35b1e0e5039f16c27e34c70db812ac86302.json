@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO keysets (keyset_id, mint_url, currency_unit, last_index, public_keys, active, maturity_date) VALUES ($1, $2, $3, $4, $5, $6, $7)\n            ON CONFLICT(keyset_id, mint_url) DO UPDATE SET currency_unit = $3, public_keys = $5, active = $6, maturity_date = $7;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "13584c8d2ec7ec82fbe350506e55f35b1e0e5039f16c27e34c70db812ac86302"
+}
