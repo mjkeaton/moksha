@@ -83,7 +83,7 @@ pub async fn get_keys(
 
 #[utoipa::path(
         get,
-        path = "/v1/keys/{id}/{unit}",
+        path = "/v1/keys/{id}/{unit}/{maturity_date}",
         responses(
             (status = 200, description = "get keys by id", body = [KeysResponse])
         ),
@@ -109,6 +109,7 @@ pub async fn get_keys_by_id(
             request_to_mint.bill_key.as_str(),
             String::default().as_str(),
             params.id.clone(),
+            Option::from(params.maturity_date),
         );
 
         tx.commit().await?;
@@ -160,7 +161,7 @@ pub async fn get_keysets(
 //Bitcredit specific function
 #[utoipa::path(
     get,
-    path = "/v1/keysets/{unit}/{id}",
+    path = "/v1/keysets/{unit}/{id}/{maturity_date}",
     responses(
             (status = 200, description = "get keysets for special bill", body = [Keysets])
     ),
@@ -183,6 +184,7 @@ pub async fn get_keysets_by_id(
         request_to_mint.bill_key.as_str(),
         String::default().as_str(),
         params.id.clone(),
+        Option::from(params.maturity_date),
     );
 
     match mint
@@ -198,10 +200,11 @@ pub async fn get_keysets_by_id(
 
     tx.commit().await?;
 
-    Ok(Json(Keysets::new(
+    Ok(Json(Keysets::new_with_maturity_date(
         keys.keyset_id,
         CurrencyUnit::from(params.unit.clone()),
         true,
+        keys.maturity_date.unwrap(),
     )))
 }
 
@@ -656,11 +659,11 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
     };
 
     //TODO: this static path only for testing. Remove it
-    let output_path = "/home/mtbitcr/RustroverProjects/E-Bills/bills_keys".to_string()
-        + "/"
-        + bill_name.as_str()
-        + ".json";
-    let mut file = File::create(output_path.clone()).unwrap();
-    file.write_all(serde_json::to_string_pretty(&keys).unwrap().as_bytes())
-        .unwrap();
+    // let output_path = "/home/mtbitcr/RustroverProjects/E-Bills/bills_keys".to_string()
+    //     + "/"
+    //     + bill_name.as_str()
+    //     + ".json";
+    // let mut file = File::create(output_path.clone()).unwrap();
+    // file.write_all(serde_json::to_string_pretty(&keys).unwrap().as_bytes())
+    //     .unwrap();
 }

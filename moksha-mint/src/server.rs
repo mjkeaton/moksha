@@ -176,9 +176,12 @@ fn app(mint: Mint) -> Router {
     let default_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/v1/keys/:unit", get(get_keys))
-        .route("/v1/keys/:id/:unit", get(get_keys_by_id))
+        .route("/v1/keys/:id/:unit/:maturity_date", get(get_keys_by_id))
         .route("/v1/keysets/:unit", get(get_keysets))
-        .route("/v1/keysets/:unit/:id", get(get_keysets_by_id))
+        .route(
+            "/v1/keysets/:unit/:id/:maturity_date",
+            get(get_keysets_by_id),
+        )
         .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
         .route("/v1/mint/quote/bitcredit", post(post_mint_quote_bitcredit))
         .route(
@@ -482,7 +485,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/v1/keys/unknownkeyset/sat")
+                    .uri("/v1/keys/unknownkeyset/sat/1111")
                     .body(Body::empty())?,
             )
             .await?;
@@ -501,7 +504,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/v1/keys/00f545318e4fad2b/sat")
+                    .uri("/v1/keys/00f545318e4fad2b/sat/111")
                     .body(Body::empty())?,
             )
             .await?;
