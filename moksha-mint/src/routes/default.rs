@@ -42,7 +42,7 @@ use tracing::log::error;
         responses(
             (status = 200, description = "post swap", body = [PostSwapResponse])
         ),
-    )]
+)]
 #[instrument(name = "post_swap", skip(mint), err)]
 pub async fn post_swap(
     State(mint): State<Mint>,
@@ -58,15 +58,114 @@ pub async fn post_swap(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/keys/{unit}",
-        responses(
+    get,
+    path = "/{id}/{unit}/v1/info",
+    responses(
+            (status = 200, description = "get mint info", body = [MintInfoResponse])
+    ),
+    params(
+            ("id" = String, Path, description = "keyset id"),
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
+#[instrument(name = "mjk_get_info", skip(state), err)]
+pub async fn mjk_get_info(state: State<Mint>) -> Result<Json<MintInfoResponse>, MokshaMintError> {
+    get_info(state).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/{id}/{unit}/v1/keysets",
+    responses(
+            (status = 200, description = "get keysets for special bill", body = [Keysets])
+    ),
+    params(
+            ("id" = String, Path, description = "keyset id"),
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
+#[instrument(skip(state), err)]
+pub async fn mjk_get_keysets(
+    params: Path<ParamsBitcreditGetKeysetsById>,
+    state: State<Mint>,
+) -> Result<Json<Keysets>, MokshaMintError> {
+    get_keysets_by_id(params, state).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/{id}/{unit}/v1/keys",
+    responses(
             (status = 200, description = "get keys", body = [KeysResponse])
+    ),
+    params(
+            ("id" = String, Path, description = "keyset id"),
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
+#[instrument(skip(state), err)]
+pub async fn mjk_get_keys(
+    params: Path<ParamsGetKeys>,
+    state: State<Mint>
+) -> Result<Json<KeysResponse>, MokshaMintError> {
+    mjk_get_keys_by_id(params, state).await
+}
+
+#[utoipa::path(
+    get,
+    path = "/{id}/{unit}/v1/keys/{id}",
+    responses(
+            (status = 200, description = "get keys by id", body = [KeysResponse])
+    ),
+    params(
+            ("id" = String, Path, description = "keyset id"),
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
+#[instrument(skip(state), err)]
+pub async fn mjk_get_keys_by_id(
+    params: Path<ParamsGetKeys>,
+    state: State<Mint>,
+) -> Result<Json<KeysResponse>, MokshaMintError> {
+    get_keys_by_id(params, state).await
+}
+
+#[utoipa::path(
+        post,
+        path = "/{id}/{unit}/v1/swap",
+        request_body = PostSwapRequest,
+        responses(
+            (status = 200, description = "post swap", body = [PostSwapResponse])
         ),
         params(
-            ("unit"  = String, Path, description = "keyset unit"),
+                ("id" = String, Path, description = "keyset id"),
+                ("unit"  = String, Path, description = "keyset unit"),
         )
-    )]
+)]
+#[instrument(name = "mjk_post_swap", skip(mint), err)]
+pub async fn mjk_post_swap(
+    State(mint): State<Mint>,
+    Json(swap_request): Json<PostSwapRequest>,
+) -> Result<Json<PostSwapResponse>, MokshaMintError> {
+    let response = mint
+        .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
+        .await?;
+
+    Ok(Json(PostSwapResponse {
+        signatures: response,
+    }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/keys/{unit}",
+    responses(
+            (status = 200, description = "get keys", body = [KeysResponse])
+    ),
+    params(
+            ("unit"  = String, Path, description = "keyset unit"),
+    )
+)]
 #[instrument(skip(mint), err)]
 pub async fn get_keys(
     Path(unit): Path<String>,
@@ -82,16 +181,16 @@ pub async fn get_keys(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/keys/{id}/{unit}",
-        responses(
+    get,
+    path = "/v1/keys/{id}/{unit}",
+    responses(
             (status = 200, description = "get keys by id", body = [KeysResponse])
-        ),
-        params(
+    ),
+    params(
             ("id" = String, Path, description = "keyset id"),
             ("unit"  = String, Path, description = "keyset unit"),
-        )
-    )]
+    )
+)]
 #[instrument(skip(mint), err)]
 pub async fn get_keys_by_id(
     params: Path<ParamsGetKeys>,
@@ -136,15 +235,15 @@ pub async fn get_keys_by_id(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/keysets/{unit}",
-        responses(
+    get,
+    path = "/v1/keysets/{unit}",
+    responses(
             (status = 200, description = "get keysets", body = [Keysets])
-        ),
-        params(
+    ),
+    params(
             ("unit"  = String, Path, description = "keyset unit"),
-        )
-    )]
+    )
+)]
 #[instrument(skip(mint), err)]
 pub async fn get_keysets(
     Path(unit): Path<String>,
@@ -212,7 +311,7 @@ pub async fn get_keysets_by_id(
         responses(
             (status = 200, description = "post mint quote", body = [PostMintQuoteBolt11Response])
         ),
-    )]
+)]
 #[instrument(name = "post_mint_quote_bolt11", skip(mint), err)]
 pub async fn post_mint_quote_bolt11(
     State(mint): State<Mint>,
@@ -309,7 +408,7 @@ pub async fn post_request_to_mint_bitcredit(
         params(
             ("quote_id" = String, Path, description = "quote id"),
         )
-    )]
+)]
 #[instrument(name = "post_mint_bolt11", fields(quote_id = %request.quote), skip_all, err)]
 pub async fn post_mint_bolt11(
     State(mint): State<Mint>,
@@ -399,7 +498,7 @@ pub async fn post_mint_bitcredit(
         responses(
             (status = 200, description = "post mint quote", body = [PostMeltQuoteBolt11Response])
         ),
-    )]
+)]
 #[instrument(name = "post_melt_quote_bolt11", skip(mint), err)]
 pub async fn post_melt_quote_bolt11(
     State(mint): State<Mint>,
@@ -445,7 +544,7 @@ fn quote_expiry() -> u64 {
         responses(
             (status = 200, description = "post melt", body = [PostMeltBolt11Response])
         ),
-    )]
+)]
 #[instrument(name = "post_melt_bolt11", skip(mint), err)]
 pub async fn post_melt_bolt11(
     State(mint): State<Mint>,
@@ -482,15 +581,15 @@ pub async fn post_melt_bolt11(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/mint/quote/bolt11/{quote_id}",
-        responses(
+    get,
+    path = "/v1/mint/quote/bolt11/{quote_id}",
+    responses(
             (status = 200, description = "get mint quote by id", body = [PostMintQuoteBolt11Response])
-        ),
-        params(
+    ),
+    params(
             ("quote_id" = String, Path, description = "quote id"),
-        )
-    )]
+    )
+)]
 #[instrument(name = "get_mint_quote_bolt11", skip(mint), err)]
 pub async fn get_mint_quote_bolt11(
     Path(quote_id): Path<String>,
@@ -568,15 +667,15 @@ pub async fn get_mint_quote_bitcredit(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/melt/quote/bolt11/{quote_id}",
-        responses(
+    get,
+    path = "/v1/melt/quote/bolt11/{quote_id}",
+    responses(
             (status = 200, description = "post mint quote", body = [PostMeltQuoteBolt11Response])
-        ),
-        params(
+    ),
+    params(
             ("quote_id" = String, Path, description = "quote id"),
-        )
-    )]
+    )
+)]
 #[instrument(name = "get_melt_quote_bolt11", skip(mint), err)]
 pub async fn get_melt_quote_bolt11(
     Path(quote_id): Path<String>,
@@ -595,12 +694,12 @@ pub async fn get_melt_quote_bolt11(
 }
 
 #[utoipa::path(
-        get,
-        path = "/v1/info",
-        responses(
+    get,
+    path = "/v1/info",
+    responses(
             (status = 200, description = "get mint info", body = [MintInfoResponse])
-        )
-    )]
+    )
+)]
 #[instrument(name = "get_info", skip(mint), err)]
 pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>, MokshaMintError> {
     // TODO implement From-trait
@@ -618,9 +717,9 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
                 .contact_nostr
                 .map(|nostr| vec!["nostr".to_owned(), nostr]),
         ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<Vec<String>>>(),
+            .into_iter()
+            .flatten()
+            .collect::<Vec<Vec<String>>>(),
     );
 
     let mint_info = MintInfoResponse {

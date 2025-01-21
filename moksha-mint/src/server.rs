@@ -8,6 +8,7 @@ use crate::routes::default::{
     get_melt_quote_bolt11, get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11,
     post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit,
     post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap,
+    mjk_get_info, mjk_get_keysets, mjk_get_keys, mjk_get_keys_by_id, mjk_post_swap
 };
 use axum::extract::Request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
@@ -89,7 +90,7 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
             )
             .into_make_service(),
     )
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -175,6 +176,13 @@ struct ApiDoc;
 fn app(mint: Mint) -> Router {
     let default_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        /* mjk */
+        .route("/:id/:unit/v1/info", get(mjk_get_info))
+        .route("/:id/:unit/v1/keysets", get(mjk_get_keysets))
+        .route("/:id/:unit/v1/keys", get(mjk_get_keys))
+        .route("/:id/:unit/v1/keys/:id", get(mjk_get_keys_by_id))
+        .route("/:id/:unit/v1/swap", post(mjk_post_swap))
+        /* mjk - end */
         .route("/v1/keys/:unit", get(get_keys))
         .route("/v1/keys/:id/:unit", get(get_keys_by_id))
         .route("/v1/keysets/:unit", get(get_keysets))
@@ -282,12 +290,12 @@ async fn add_response_headers(
 }
 
 #[utoipa::path(
-        get,
-        path = "/health",
-        responses(
+    get,
+    path = "/health",
+    responses(
             (status = 200, description = "health check")
-        ),
-    )]
+    ),
+)]
 async fn get_health() -> impl IntoResponse {
     StatusCode::OK
 }
@@ -375,7 +383,7 @@ mod tests {
             db_url: connection_string.to_owned(),
             ..Default::default()
         })
-        .await?;
+            .await?;
         db.migrate().await;
         Ok(db)
     }
