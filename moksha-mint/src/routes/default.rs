@@ -144,11 +144,26 @@ pub async fn mjk_get_keys_by_id(
 )]
 #[instrument(name = "mjk_post_swap", skip(mint), err)]
 pub async fn mjk_post_swap(
+    params: Path<ParamsGetKeys>,
     State(mint): State<Mint>,
     Json(swap_request): Json<PostSwapRequest>,
 ) -> Result<Json<PostSwapResponse>, MokshaMintError> {
+    let mut tx = mint.db.begin_tx().await?;
+    let request_to_mint = &mint
+        .db
+        .get_bitcredit_request_to_mint(&mut tx, &params.id)
+        .await?;
+
+    let keyset = MintKeyset::new_with_id(
+        request_to_mint.bill_key.as_str(),
+        String::default().as_str(),
+        params.id.clone(),
+    );
+
+    tx.commit().await?;
+
     let response = mint
-        .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
+        .swap(&swap_request.inputs, &swap_request.outputs, &keyset)
         .await?;
 
     Ok(Json(PostSwapResponse {
