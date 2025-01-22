@@ -3,7 +3,6 @@
 //! The `Token` struct represents a token, with an optional `mint` field for the URL of the Mint and a `proofs` field for the proofs associated with the token.
 
 use std::str::FromStr;
-
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
@@ -12,7 +11,7 @@ use url::Url;
 use crate::{error::MokshaCoreError, primitives::CurrencyUnit, proof::Proofs};
 
 const TOKEN_PREFIX_V3: &str = "cashuA";
-const TOKEN_PREFIX_BITCREDIT: &str = "bitcr";
+const TOKEN_PREFIX_BITCREDIT: &str = "bitcrA";
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
