@@ -3,7 +3,13 @@ use crate::routes::btconchain::{
     post_melt_btconchain, post_melt_quote_btconchain, post_mint_btconchain,
     post_mint_quote_btconchain,
 };
-use crate::routes::default::{check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keysets, get_keysets_by_id, get_melt_quote_bolt11, get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11, post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit, post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap, mjk_get_info, mjk_get_keysets, mjk_get_keys, mjk_get_keys_by_id, mjk_post_swap, get_keysets_old, get_keys_old};
+use crate::routes::default::{
+    check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keys_old, get_keysets,
+    get_keysets_by_id, get_keysets_old, get_melt_quote_bolt11, get_mint_quote_bitcredit,
+    get_mint_quote_bolt11, mjk_get_info, mjk_get_keys, mjk_get_keys_by_id, mjk_get_keysets,
+    mjk_post_swap, post_melt_bolt11, post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11,
+    post_mint_quote_bitcredit, post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap,
+};
 use axum::extract::Request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::middleware::Next;
@@ -84,7 +90,7 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
             )
             .into_make_service(),
     )
-        .await?;
+    .await?;
 
     Ok(())
 }
@@ -185,7 +191,8 @@ fn app(mint: Mint) -> Router {
         .route(
             "/v1/keysets/:unit/:id/:maturity_date",
             get(get_keysets_by_id),
-        )        .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
+        )
+        .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
         .route("/v1/mint/quote/bitcredit", post(post_mint_quote_bitcredit))
         .route(
             "/v1/mint/request/bitcredit",
@@ -381,7 +388,7 @@ mod tests {
             db_url: connection_string.to_owned(),
             ..Default::default()
         })
-            .await?;
+        .await?;
         db.migrate().await;
         Ok(db)
     }

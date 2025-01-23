@@ -22,6 +22,7 @@ use crate::{
     config::{BtcOnchainConfig, MintConfig},
     error::MokshaMintError,
     mint::Mint,
+    time,
 };
 use chrono::{Duration, Utc};
 use moksha_core::keyset::MintKeyset;
@@ -106,7 +107,7 @@ pub async fn mjk_get_keysets(
 #[instrument(skip(state), err)]
 pub async fn mjk_get_keys(
     params: Path<ParamsGetKeys>,
-    state: State<Mint>
+    state: State<Mint>,
 ) -> Result<Json<KeysResponse>, MokshaMintError> {
     mjk_get_keys_by_id(params, state).await
 }
@@ -154,17 +155,34 @@ pub async fn mjk_post_swap(
         .get_bitcredit_request_to_mint(&mut tx, &params.id)
         .await?;
 
+    let maturity_date_timestamp = mint
+        .db
+        .get_mint_keyset_maturity_date(&mut tx, &request_to_mint.bill_id)
+        .await?;
+
     let keyset = MintKeyset::new_with_id(
         request_to_mint.bill_key.as_str(),
         String::default().as_str(),
         params.id.clone(),
+        Option::from(maturity_date_timestamp),
     );
 
     tx.commit().await?;
 
-    let response = mint
-        .swap(&swap_request.inputs, &swap_request.outputs, &keyset)
-        .await?;
+    let current_timestamp = time::TimeApi::get_atomic_time().await.timestamp;
+
+    let mut response;
+
+    if maturity_date_timestamp <= current_timestamp as i64 {
+        //if credit keyset timestamp <= current timestamp --> return debit token
+        response = mint
+            .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
+            .await?;
+    } else {
+        response = mint
+            .swap(&swap_request.inputs, &swap_request.outputs, &keyset)
+            .await?;
+    }
 
     Ok(Json(PostSwapResponse {
         signatures: response,
@@ -205,9 +223,7 @@ pub async fn get_keys(
     )
 )]
 #[instrument(skip(mint), err)]
-pub async fn get_keys_old(
-    State(mint): State<Mint>,
-) -> Result<Json<KeysResponse>, MokshaMintError> {
+pub async fn get_keys_old(State(mint): State<Mint>) -> Result<Json<KeysResponse>, MokshaMintError> {
     Ok(Json(KeysResponse {
         keysets: vec![KeyResponse {
             id: mint.keyset.keyset_id.clone(),
@@ -304,9 +320,7 @@ pub async fn get_keysets(
     )
 )]
 #[instrument(skip(mint), err)]
-pub async fn get_keysets_old(
-    State(mint): State<Mint>,
-) -> Result<Json<Keysets>, MokshaMintError> {
+pub async fn get_keysets_old(State(mint): State<Mint>) -> Result<Json<Keysets>, MokshaMintError> {
     Ok(Json(Keysets::new(
         mint.keyset.keyset_id,
         CurrencyUnit::Sat,
@@ -345,7 +359,12 @@ pub async fn get_keysets_by_id(
 
     match mint
         .db
-        .add_mint_keyset(&mut tx, &keys.keyset_id, &keys.mint_pubkey.to_string())
+        .add_mint_keyset(
+            &mut tx,
+            &keys.keyset_id,
+            &keys.mint_pubkey.to_string(),
+            &keys.maturity_date,
+        )
         .await
     {
         Err(e) => {
@@ -777,9 +796,9 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
                 .contact_nostr
                 .map(|nostr| vec!["nostr".to_owned(), nostr]),
         ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<Vec<String>>>(),
+        .into_iter()
+        .flatten()
+        .collect::<Vec<Vec<String>>>(),
     );
 
     let mint_info = MintInfoResponse {

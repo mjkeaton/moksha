@@ -60,8 +60,9 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         unit: String,
         id: String,
+        maturity_date: i64,
     ) -> Result<Keysets, MokshaWalletError> {
-        self.do_get(&mint_url.join(&format!("v1/keysets/{}/{}", unit, id))?)
+        self.do_get(&mint_url.join(&format!("v1/keysets/{}/{}/{}", unit, id, maturity_date))?)
             .await
     }
 

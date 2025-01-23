@@ -8,13 +8,13 @@ use moksha_core::{
     proof::{Proof, Proofs},
 };
 
+use super::Database;
 use crate::{config::DatabaseConfig, error::MokshaMintError, model::Invoice};
+use moksha_core::keyset::MintKeyset;
 use moksha_core::primitives::{BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint};
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;
-
-use super::Database;
 
 #[derive(Clone)]
 pub struct PostgresDB {
@@ -335,15 +335,33 @@ impl Database for PostgresDB {
         tx: &mut sqlx::Transaction<Self::DB>,
         keyset_id: &String,
         keyset_public_key: &String,
+        maturity_date: &Option<i64>,
     ) -> Result<(), MokshaMintError> {
         sqlx::query!(
-            "INSERT INTO mint_keysets (keyset_id, keyset_public_key) VALUES ($1, $2)",
+            "INSERT INTO mint_keysets (keyset_id, keyset_public_key, maturity_date) VALUES ($1, $2, $3)",
             keyset_id,
             keyset_public_key,
+            maturity_date.unwrap(),
         )
         .execute(&mut **tx)
         .await?;
         Ok(())
+    }
+
+    #[instrument(level = "debug", skip(self), err)]
+    async fn get_mint_keyset_maturity_date(
+        &self,
+        tx: &mut sqlx::Transaction<Self::DB>,
+        keyset_id: &String,
+    ) -> Result<i64, MokshaMintError> {
+        let maturity_date: i64 = sqlx::query!(
+            "SELECT maturity_date FROM mint_keysets WHERE keyset_id = $1",
+            keyset_id
+        )
+        .map(|row| row.maturity_date.unwrap())
+        .fetch_one(&mut **tx)
+        .await?;
+        Ok(maturity_date)
     }
 
     #[instrument(level = "debug", skip(self), err)]

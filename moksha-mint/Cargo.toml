@@ -49,6 +49,7 @@ tracing-opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
 opentelemetry = { workspace = true }
 opentelemetry-otlp = { workspace = true, features = ["http-proto", "reqwest-client"] }
+log = "0.4.22"
 
 [dev-dependencies]
 tempfile = { workspace = true }
