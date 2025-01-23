@@ -3,12 +3,7 @@ use crate::routes::btconchain::{
     post_melt_btconchain, post_melt_quote_btconchain, post_mint_btconchain,
     post_mint_quote_btconchain,
 };
-use crate::routes::default::{
-    check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keysets, get_keysets_by_id,
-    get_melt_quote_bolt11, get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11,
-    post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit,
-    post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap,
-};
+use crate::routes::default::{check_bitcredit_quote, get_info, get_keys, get_keys_by_id, get_keysets, get_keysets_by_id, get_melt_quote_bolt11, get_mint_quote_bitcredit, get_mint_quote_bolt11, post_melt_bolt11, post_melt_quote_bolt11, post_mint_bitcredit, post_mint_bolt11, post_mint_quote_bitcredit, post_mint_quote_bolt11, post_request_to_mint_bitcredit, post_swap, mjk_get_info, mjk_get_keysets, mjk_get_keys, mjk_get_keys_by_id, mjk_post_swap, get_keysets_old, get_keys_old};
 use axum::extract::Request;
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::middleware::Next;
@@ -89,7 +84,7 @@ pub async fn run_server(mint: Mint) -> anyhow::Result<()> {
             )
             .into_make_service(),
     )
-    .await?;
+        .await?;
 
     Ok(())
 }
@@ -175,14 +170,22 @@ struct ApiDoc;
 fn app(mint: Mint) -> Router {
     let default_routes = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        /* mjk */
+        .route("/:id/:unit/v1/info", get(mjk_get_info))
+        .route("/:id/:unit/v1/keysets", get(mjk_get_keysets))
+        .route("/:id/:unit/v1/keys", get(mjk_get_keys))
+        .route("/:id/:unit/v1/keys/:id", get(mjk_get_keys_by_id))
+        .route("/:id/:unit/v1/swap", post(mjk_post_swap))
+        /* mjk - end */
         .route("/v1/keys/:unit", get(get_keys))
+        .route("/v1/keys", get(get_keys_old))
         .route("/v1/keys/:id/:unit/:maturity_date", get(get_keys_by_id))
         .route("/v1/keysets/:unit", get(get_keysets))
+        .route("/v1/keysets", get(get_keysets_old))
         .route(
             "/v1/keysets/:unit/:id/:maturity_date",
             get(get_keysets_by_id),
-        )
-        .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
+        )        .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
         .route("/v1/mint/quote/bitcredit", post(post_mint_quote_bitcredit))
         .route(
             "/v1/mint/request/bitcredit",
@@ -285,12 +288,12 @@ async fn add_response_headers(
 }
 
 #[utoipa::path(
-        get,
-        path = "/health",
-        responses(
+    get,
+    path = "/health",
+    responses(
             (status = 200, description = "health check")
-        ),
-    )]
+    ),
+)]
 async fn get_health() -> impl IntoResponse {
     StatusCode::OK
 }
@@ -378,7 +381,7 @@ mod tests {
             db_url: connection_string.to_owned(),
             ..Default::default()
         })
-        .await?;
+            .await?;
         db.migrate().await;
         Ok(db)
     }

@@ -40,8 +40,8 @@ where
     C: CashuClient,
 {
     client: C,
-    pub dhke: Dhke,
-    pub localstore: L,
+    dhke: Dhke,
+    localstore: L,
     secret: DeterministicSecret,
 }
 
