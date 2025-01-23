@@ -197,6 +197,28 @@ pub async fn get_keys(
 
 #[utoipa::path(
     get,
+    path = "/v1/keys",
+    responses(
+            (status = 200, description = "get keys", body = [KeysResponse])
+    ),
+    params(
+    )
+)]
+#[instrument(skip(mint), err)]
+pub async fn get_keys_old(
+    State(mint): State<Mint>,
+) -> Result<Json<KeysResponse>, MokshaMintError> {
+    Ok(Json(KeysResponse {
+        keysets: vec![KeyResponse {
+            id: mint.keyset.keyset_id.clone(),
+            unit: CurrencyUnit::Sat,
+            keys: mint.keyset.public_keys,
+        }],
+    }))
+}
+
+#[utoipa::path(
+    get,
     path = "/v1/keys/{id}/{unit}",
     responses(
             (status = 200, description = "get keys by id", body = [KeysResponse])
@@ -267,6 +289,26 @@ pub async fn get_keysets(
     Ok(Json(Keysets::new(
         mint.keyset.keyset_id,
         CurrencyUnit::from(unit),
+        true,
+    )))
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/keysets",
+    responses(
+            (status = 200, description = "get keysets", body = [Keysets])
+    ),
+    params(
+    )
+)]
+#[instrument(skip(mint), err)]
+pub async fn get_keysets_old(
+    State(mint): State<Mint>,
+) -> Result<Json<Keysets>, MokshaMintError> {
+    Ok(Json(Keysets::new(
+        mint.keyset.keyset_id,
+        CurrencyUnit::Sat,
         true,
     )))
 }
