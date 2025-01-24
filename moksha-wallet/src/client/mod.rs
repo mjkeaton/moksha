@@ -36,6 +36,7 @@ pub trait CashuClient {
         mint_url: &Url,
         keyset_id: String,
         unit: String,
+        maturity_date: i64,
     ) -> Result<KeysResponse, MokshaWalletError>;
 
     async fn get_keysets(&self, mint_url: &Url, unit: String)

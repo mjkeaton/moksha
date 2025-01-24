@@ -40,7 +40,7 @@ where
     C: CashuClient,
 {
     client: C,
-    dhke: Dhke,
+    pub dhke: Dhke,
     localstore: L,
     secret: DeterministicSecret,
 }
@@ -261,7 +261,7 @@ where
         for keyset in mint_keysets.keysets.iter() {
             let keysets = self
                 .client
-                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone())
+                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone(), keyset.maturity_date.unwrap())
                 .await;
 
             let public_keys = match keysets {
@@ -327,7 +327,7 @@ where
         for keyset in mint_keysets.keysets.iter() {
             let keysets = self
                 .client
-                .get_keys_by_id(mint_url, id.clone(), unit.clone())
+                .get_keys_by_id(mint_url, id.clone(), unit.clone(), maturity_date)
                 .await;
 
             let public_keys = match keysets {
