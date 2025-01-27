@@ -14,6 +14,7 @@ use moksha_core::{
 };
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use tracing::{debug, instrument};
 use uuid::Uuid;
 
@@ -25,7 +26,9 @@ use crate::{
     time,
 };
 use chrono::{Duration, Utc};
-use moksha_core::keyset::MintKeyset;
+use moksha_core::amount::Amount;
+use moksha_core::blind::{BlindedMessage, BlindedSignature};
+use moksha_core::keyset::{KeysetId, MintKeyset};
 use moksha_core::primitives::{
     BillKeys, BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint,
     CheckBitcreditQuoteResponse, ParamsBitcreditGetKeysetsById, ParamsBitcreditQuoteCheck,
@@ -33,8 +36,15 @@ use moksha_core::primitives::{
     PostMintQuoteBitcreditRequest, PostMintQuoteBitcreditResponse,
     PostRequestToMintBitcreditRequest, PostRequestToMintBitcreditResponse,
 };
+use moksha_wallet::error::MokshaWalletError;
+use moksha_wallet::http::CrossPlatformHttpClient;
+use moksha_wallet::localstore::sqlite::SqliteLocalStore;
+use moksha_wallet::localstore::WalletKeyset;
+use moksha_wallet::wallet::Wallet;
 use std::str::FromStr;
+use std::{fs, thread};
 use tracing::log::error;
+use url::Url;
 
 #[utoipa::path(
         post,
@@ -171,7 +181,10 @@ pub async fn mjk_post_swap(
 
     let current_timestamp = time::TimeApi::get_atomic_time().await.timestamp;
 
-    let mut response;
+    println!("Current timestamp: {}", current_timestamp);
+    println!("Maturity_date timestamp: {}", maturity_date_timestamp);
+
+    let response;
 
     if maturity_date_timestamp <= current_timestamp as i64 {
         //if credit keyset timestamp <= current timestamp --> return debit token
@@ -535,6 +548,7 @@ pub async fn post_mint_bolt11(
     )
 )]
 #[instrument(name = "post_mint_bitcredit", fields(quote_id = %request.quote), skip_all, err)]
+#[axum::debug_handler]
 pub async fn post_mint_bitcredit(
     State(mint): State<Mint>,
     Json(request): Json<PostMintBitcreditRequest>,
@@ -550,6 +564,14 @@ pub async fn post_mint_bitcredit(
             false,
         )
         .await?;
+
+    //TODO: here we should generate mint fee
+    // let mint_clone = mint.clone();
+    //
+    // let mint_signatures = thread::spawn(move || generate_mint_fee(Amount(10), mint_clone))
+    //     .join()
+    //     .expect("Thread panicked").unwrap();
+    // println!("{:#?}", mint_signatures);
 
     let old_quote = &mint
         .db
@@ -568,6 +590,97 @@ pub async fn post_mint_bitcredit(
         .await?;
     tx.commit().await?;
     Ok(Json(PostMintBitcreditResponse { signatures }))
+}
+
+#[tokio::main]
+#[instrument(level = "debug", skip_all, err)]
+async fn generate_mint_fee(
+    amount: Amount,
+    mint: Mint,
+) -> Result<Vec<BlindedSignature>, MokshaMintError> {
+    init_wallet().await;
+
+    let wallet = create_mint_wallet().await;
+
+    let split_amount = amount.split();
+
+    println!("{:#?}", split_amount);
+    let secret_range = wallet
+        .create_secrets(
+            &KeysetId::new(&mint.keyset.keyset_id).unwrap(),
+            split_amount.len() as u32,
+        )
+        .await
+        .unwrap();
+
+    let blinded_messages = split_amount
+        .into_iter()
+        .zip(secret_range)
+        .map(|(amount, (secret, blinding_factor))| {
+            let b_ = wallet.dhke.step1_alice(&secret, &blinding_factor)?;
+            Ok((
+                BlindedMessage {
+                    amount,
+                    b_,
+                    id: mint.keyset.keyset_id.to_string(),
+                },
+                blinding_factor,
+                secret,
+            ))
+        })
+        .collect::<Result<Vec<(_, _, _)>, MokshaWalletError>>()
+        .unwrap();
+
+    let blinded_message = blinded_messages
+        .clone()
+        .into_iter()
+        .map(|(msg, _, _)| msg)
+        .collect::<Vec<BlindedMessage>>();
+
+    let signatures = mint.create_blinded_signatures(&blinded_message, &mint.keyset);
+
+    signatures
+}
+
+async fn create_mint_wallet() -> Wallet<SqliteLocalStore, CrossPlatformHttpClient> {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+        .with_localstore(localstore)
+        .build()
+        .await
+        .expect("Could not create wallet");
+
+    wallet
+}
+
+pub async fn init_wallet() {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    if !dir.exists() {
+        fs::create_dir_all(dir.clone()).unwrap();
+    }
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let _localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    // //TODO: take from params
+    // let mint_url = Url::parse(CONFIG.mint_url.as_str()).expect("Invalid url");
+    //
+    // let identity: Identity = read_identity_from_file();
+    // let bitcoin_key = identity.node_id.clone();
+    //
+    // let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //     .with_localstore(localstore)
+    //     .build()
+    //     .await
+    //     .expect("Could not create wallet");
 }
 
 #[utoipa::path(

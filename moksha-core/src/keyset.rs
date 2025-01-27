@@ -13,6 +13,7 @@
 use hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use utoipa::ToSchema;
 
 use bitcoin_hashes::{sha256, Hash};
@@ -148,9 +149,9 @@ impl KeysetId {
     }
 }
 
-impl ToString for KeysetId {
-    fn to_string(&self) -> String {
-        format!("{}{}", self.0.to_string(), self.1)
+impl Display for KeysetId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("{}{}", self.0.to_string(), self.1))
     }
 }
 
@@ -168,11 +169,11 @@ impl From<String> for KeysetIdType {
     }
 }
 
-impl ToString for KeysetIdType {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for KeysetIdType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
             KeysetIdType::V1 => "00".to_string(),
-        }
+        })
     }
 }
 
