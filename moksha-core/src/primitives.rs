@@ -189,14 +189,12 @@ pub struct ParamsBitcreditQuoteCheck {
 pub struct ParamsBitcreditGetKeysetsById {
     pub id: String,
     pub unit: String,
-    pub maturity_date: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ParamsGetKeys {
     pub id: String,
     pub unit: String,
-    pub maturity_date: i64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]

@@ -366,11 +366,7 @@ pub async fn get_keysets_by_id(
     //remove maturity date from get keysets and get keys
     match mint
         .db
-        .add_mint_keyset(
-            &mut tx,
-            &keys.keyset_id,
-            &keys.mint_pubkey.to_string(),
-        )
+        .add_mint_keyset(&mut tx, &keys.keyset_id, &keys.mint_pubkey.to_string())
         .await
     {
         Err(e) => {
@@ -466,7 +462,7 @@ pub async fn post_request_to_mint_bitcredit(
     let request_to_mint = BitcreditRequestToMint {
         bill_key: request.bill_keys.private_key_pem.clone(),
         bill_id: request.bill_id.clone(),
-        maturity_date: request.maturity_date.clone()
+        maturity_date: request.maturity_date.clone(),
     };
 
     write_bill_keys_to_file(

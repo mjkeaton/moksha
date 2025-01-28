@@ -188,10 +188,7 @@ fn app(mint: Mint) -> Router {
         .route("/v1/keys/:id/:unit", get(get_keys_by_id))
         .route("/v1/keysets/:unit", get(get_keysets))
         .route("/v1/keysets", get(get_keysets_old))
-        .route(
-            "/v1/keysets/:unit/:id",
-            get(get_keysets_by_id),
-        )
+        .route("/v1/keysets/:unit/:id", get(get_keysets_by_id))
         .route("/v1/mint/quote/bolt11", post(post_mint_quote_bolt11))
         .route("/v1/mint/quote/bitcredit", post(post_mint_quote_bitcredit))
         .route(

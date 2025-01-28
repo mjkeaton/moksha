@@ -312,7 +312,6 @@ where
         mint_url: &Url,
         unit: String,
         id: String,
-        maturity_date: i64,
     ) -> Result<Vec<WalletKeyset>, MokshaWalletError> {
         if !self.client.is_v1_supported(mint_url).await? {
             return Err(MokshaWalletError::UnsupportedApiVersion);
@@ -320,7 +319,7 @@ where
 
         let mint_keysets = self
             .client
-            .get_keysets_by_id(mint_url, unit.clone(), id.clone(), maturity_date)
+            .get_keysets_by_id(mint_url, unit.clone(), id.clone())
             .await?;
 
         let mut tx = self.localstore.begin_tx().await?;

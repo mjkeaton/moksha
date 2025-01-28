@@ -46,7 +46,6 @@ pub trait CashuClient {
         mint_url: &Url,
         unit: String,
         id: String,
-        maturity_date: i64,
     ) -> Result<Keysets, MokshaWalletError>;
 
     async fn post_swap(
