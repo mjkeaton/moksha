@@ -1,2 +1,2 @@
 ALTER TABLE bitcredit_mint_quotes
-ADD COLUMN endorsed BOOLEAN NOT NULL;
+ADD COLUMN IF NOT EXISTS endorsed BOOLEAN NOT NULL;

@@ -31,7 +31,6 @@ pub struct MintKeyset {
     pub public_keys: HashMap<u64, PublicKey>,
     pub keyset_id: String,
     pub mint_pubkey: PublicKey,
-    pub maturity_date: Option<i64>,
 }
 
 impl MintKeyset {
@@ -43,7 +42,6 @@ impl MintKeyset {
             keyset_id: derive_keyset_id(&pub_keys),
             public_keys: pub_keys,
             mint_pubkey: derive_pubkey(seed).expect("invalid seed"),
-            maturity_date: None,
         }
     }
 
@@ -51,7 +49,6 @@ impl MintKeyset {
         master_key: &str,
         derivation_path: &str,
         id: String,
-        maturity_date: Option<i64>,
     ) -> Self {
         let priv_keys = derive_keys(master_key, derivation_path);
         let pub_keys = derive_pubkeys(&priv_keys);
@@ -60,7 +57,6 @@ impl MintKeyset {
             keyset_id: format!("00{}", id),
             public_keys: pub_keys,
             mint_pubkey: derive_pubkey(master_key).expect("invalid seed"),
-            maturity_date,
         }
     }
 }
@@ -77,7 +73,6 @@ pub struct Keyset {
     pub id: String, // FIXME use KeysetId
     pub unit: CurrencyUnit,
     pub active: bool,
-    pub maturity_date: Option<i64>,
 }
 
 impl Keysets {
@@ -87,23 +82,6 @@ impl Keysets {
                 id,
                 unit,
                 active,
-                maturity_date: None,
-            }],
-        }
-    }
-
-    pub fn new_with_maturity_date(
-        id: String,
-        unit: CurrencyUnit,
-        active: bool,
-        maturity_date: i64,
-    ) -> Self {
-        Self {
-            keysets: vec![Keyset {
-                id,
-                unit,
-                active,
-                maturity_date: Some(maturity_date),
             }],
         }
     }

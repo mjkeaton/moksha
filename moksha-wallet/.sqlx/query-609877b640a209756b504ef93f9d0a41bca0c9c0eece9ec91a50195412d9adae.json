@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id, mint_url, keyset_id, currency_unit, active, last_index, public_keys, maturity_date FROM keysets;",
+  "query": "SELECT id, mint_url, keyset_id, currency_unit, active, last_index, public_keys FROM keysets;",
   "describe": {
     "columns": [
       {
@@ -37,11 +37,6 @@
         "name": "public_keys",
         "ordinal": 6,
         "type_info": "Text"
-      },
-      {
-        "name": "maturity_date",
-        "ordinal": 7,
-        "type_info": "Int64"
       }
     ],
     "parameters": {
@@ -54,9 +49,8 @@
       false,
       false,
       false,
-      false,
-      true
+      false
     ]
   },
-  "hash": "c3b23c966b7d89b61f98650a4443277dca6ef4a8df91c67513eeb7a9eba22780"
+  "hash": "609877b640a209756b504ef93f9d0a41bca0c9c0eece9ec91a50195412d9adae"
 }

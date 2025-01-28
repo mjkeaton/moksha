@@ -177,9 +177,10 @@ where
         mint_url: &Url,
         bill_id: String,
         bill_keys: BillKeys,
+        maturity_date: i64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError> {
         self.client
-            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys)
+            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys, maturity_date)
             .await
     }
 
@@ -261,7 +262,7 @@ where
         for keyset in mint_keysets.keysets.iter() {
             let keysets = self
                 .client
-                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone(), keyset.maturity_date.unwrap())
+                .get_keys_by_id(mint_url, keyset.id.clone(), unit.clone())
                 .await;
 
             let public_keys = match keysets {
@@ -327,7 +328,7 @@ where
         for keyset in mint_keysets.keysets.iter() {
             let keysets = self
                 .client
-                .get_keys_by_id(mint_url, id.clone(), unit.clone(), maturity_date)
+                .get_keys_by_id(mint_url, id.clone(), unit.clone())
                 .await;
 
             let public_keys = match keysets {
@@ -354,14 +355,13 @@ where
             };
 
             //this is test data
-            let wallet_keyset = WalletKeyset::new_with_maturity_date(
+            let wallet_keyset = WalletKeyset::new(
                 &keyset_id,
                 mint_url,
                 &keyset.unit,
                 0,
                 public_keys,
                 keyset.active,
-                maturity_date,
             );
 
             result.push(wallet_keyset.clone());

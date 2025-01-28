@@ -165,16 +165,10 @@ pub async fn mjk_post_swap(
         .get_bitcredit_request_to_mint(&mut tx, &params.id)
         .await?;
 
-    let maturity_date_timestamp = mint
-        .db
-        .get_mint_keyset_maturity_date(&mut tx, &request_to_mint.bill_id)
-        .await?;
-
     let keyset = MintKeyset::new_with_id(
         request_to_mint.bill_key.as_str(),
         String::default().as_str(),
         params.id.clone(),
-        Option::from(maturity_date_timestamp),
     );
 
     tx.commit().await?;
@@ -182,11 +176,11 @@ pub async fn mjk_post_swap(
     let current_timestamp = time::TimeApi::get_atomic_time().await.timestamp;
 
     println!("Current timestamp: {}", current_timestamp);
-    println!("Maturity_date timestamp: {}", maturity_date_timestamp);
+    println!("Maturity_date timestamp: {}", request_to_mint.maturity_date);
 
     let response;
 
-    if maturity_date_timestamp <= current_timestamp as i64 {
+    if request_to_mint.maturity_date <= current_timestamp as i64 {
         //if credit keyset timestamp <= current timestamp --> return debit token
         response = mint
             .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
@@ -248,7 +242,7 @@ pub async fn get_keys_old(State(mint): State<Mint>) -> Result<Json<KeysResponse>
 
 #[utoipa::path(
         get,
-        path = "/v1/keys/{id}/{unit}/{maturity_date}",
+        path = "/v1/keys/{id}/{unit}",
         responses(
             (status = 200, description = "get keys by id", body = [KeysResponse])
     ),
@@ -274,7 +268,6 @@ pub async fn get_keys_by_id(
             request_to_mint.bill_key.as_str(),
             String::default().as_str(),
             params.id.clone(),
-            Option::from(params.maturity_date),
         );
 
         tx.commit().await?;
@@ -344,7 +337,7 @@ pub async fn get_keysets_old(State(mint): State<Mint>) -> Result<Json<Keysets>, 
 //Bitcredit specific function
 #[utoipa::path(
     get,
-    path = "/v1/keysets/{unit}/{id}/{maturity_date}",
+    path = "/v1/keysets/{unit}/{id}",
     responses(
             (status = 200, description = "get keysets for special bill", body = [Keysets])
     ),
@@ -367,16 +360,16 @@ pub async fn get_keysets_by_id(
         request_to_mint.bill_key.as_str(),
         String::default().as_str(),
         params.id.clone(),
-        Option::from(params.maturity_date),
     );
 
+    //add maturity date in request to mint
+    //remove maturity date from get keysets and get keys
     match mint
         .db
         .add_mint_keyset(
             &mut tx,
             &keys.keyset_id,
             &keys.mint_pubkey.to_string(),
-            &keys.maturity_date,
         )
         .await
     {
@@ -388,11 +381,10 @@ pub async fn get_keysets_by_id(
 
     tx.commit().await?;
 
-    Ok(Json(Keysets::new_with_maturity_date(
+    Ok(Json(Keysets::new(
         keys.keyset_id,
         CurrencyUnit::from(params.unit.clone()),
         true,
-        keys.maturity_date.unwrap(),
     )))
 }
 
@@ -474,6 +466,7 @@ pub async fn post_request_to_mint_bitcredit(
     let request_to_mint = BitcreditRequestToMint {
         bill_key: request.bill_keys.private_key_pem.clone(),
         bill_id: request.bill_id.clone(),
+        maturity_date: request.maturity_date.clone()
     };
 
     write_bill_keys_to_file(

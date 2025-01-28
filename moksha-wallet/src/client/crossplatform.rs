@@ -41,9 +41,8 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         keyset_id: String,
         unit: String,
-        maturity_date: i64,
     ) -> Result<KeysResponse, MokshaWalletError> {
-        self.do_get(&mint_url.join(&format!("v1/keys/{}/{}/{}", keyset_id, unit, maturity_date))?)
+        self.do_get(&mint_url.join(&format!("v1/keys/{}/{}", keyset_id, unit))?)
             .await
     }
 
@@ -179,8 +178,13 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         bill_id: String,
         bill_keys: BillKeys,
+        maturity_date: i64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError> {
-        let body = PostRequestToMintBitcreditRequest { bill_id, bill_keys };
+        let body = PostRequestToMintBitcreditRequest {
+            bill_id,
+            bill_keys,
+            maturity_date,
+        };
         self.do_post(&mint_url.join("v1/mint/request/bitcredit")?, &body)
             .await
     }

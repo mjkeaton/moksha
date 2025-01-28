@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO mint_keysets (keyset_id, keyset_public_key, maturity_date) VALUES ($1, $2, $3)",
+  "query": "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key, maturity_date) VALUES ($1, $2, $3)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -12,5 +12,5 @@
     },
     "nullable": []
   },
-  "hash": "6f42b4ae3170f3a91a2d37b348f77025fe7ab097ce337ad9a626e4e694fb289c"
+  "hash": "c60b8ffb20cc4186a58e7e170502f4ca722eaa2cdbadaaf63b025e31f4ab1cd3"
 }

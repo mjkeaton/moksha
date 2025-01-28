@@ -24,7 +24,6 @@ pub struct WalletKeyset {
     pub last_index: u64,
     pub public_keys: HashMap<u64, PublicKey>,
     pub active: bool,
-    pub maturity_date: Option<i64>,
 }
 
 impl WalletKeysetFilter for Vec<WalletKeyset> {
@@ -55,28 +54,6 @@ impl WalletKeyset {
             last_index,
             public_keys,
             active,
-            maturity_date: None,
-        }
-    }
-
-    pub fn new_with_maturity_date(
-        keyset_id: &KeysetId,
-        mint_url: &Url,
-        currency_unit: &CurrencyUnit,
-        last_index: u64,
-        public_keys: HashMap<u64, PublicKey>,
-        active: bool,
-        maturity_date: i64,
-    ) -> Self {
-        Self {
-            id: None,
-            keyset_id: keyset_id.to_owned(),
-            mint_url: mint_url.to_owned(),
-            currency_unit: currency_unit.clone(),
-            last_index,
-            public_keys,
-            active,
-            maturity_date: Some(maturity_date),
         }
     }
 }

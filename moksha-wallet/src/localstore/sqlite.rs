@@ -100,11 +100,10 @@ impl LocalStore for SqliteLocalStore {
         let currency_unit = keyset.currency_unit.to_string();
         let last_index = keyset.last_index as i64;
         let public_keys = serde_json::to_string(&keyset.public_keys)?;
-        let maturity_date = keyset.maturity_date;
         sqlx::query!(
-            r#"INSERT INTO keysets (keyset_id, mint_url, currency_unit, last_index, public_keys, active, maturity_date) VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT(keyset_id, mint_url) DO UPDATE SET currency_unit = $3, public_keys = $5, active = $6, maturity_date = $7;
-            "#,keyset_id, mint_url, currency_unit, last_index, public_keys, keyset.active, maturity_date)
+            r#"INSERT INTO keysets (keyset_id, mint_url, currency_unit, last_index, public_keys, active) VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT(keyset_id, mint_url) DO UPDATE SET currency_unit = $3, public_keys = $5, active = $6;
+            "#,keyset_id, mint_url, currency_unit, last_index, public_keys, keyset.active)
         .execute(&mut **tx)
         .await?;
         Ok(())
@@ -114,7 +113,7 @@ impl LocalStore for SqliteLocalStore {
         &self,
         tx: &mut sqlx::Transaction<Self::DB>,
     ) -> Result<Vec<WalletKeyset>, MokshaWalletError> {
-        let rows = sqlx::query!("SELECT id, mint_url, keyset_id, currency_unit, active, last_index, public_keys, maturity_date FROM keysets;")
+        let rows = sqlx::query!("SELECT id, mint_url, keyset_id, currency_unit, active, last_index, public_keys FROM keysets;")
             .fetch_all(&mut **tx)
             .await?;
 
@@ -127,7 +126,6 @@ impl LocalStore for SqliteLocalStore {
                     KeysetId::new(&row.keyset_id).expect("invalid keyset_id in localstore");
                 let currency_unit: String = row.currency_unit.clone();
                 let active: bool = row.active;
-                let maturity_date: Option<i64> = row.maturity_date;
                 let last_index: i64 = row.last_index;
                 let public_keys: String = row.public_keys.clone();
                 let public_keys: HashMap<u64, PublicKey> =
@@ -140,7 +138,6 @@ impl LocalStore for SqliteLocalStore {
                     active,
                     last_index: last_index as u64,
                     public_keys,
-                    maturity_date,
                 })
             })
             .collect::<Result<Vec<WalletKeyset>, SqliteError>>()?)

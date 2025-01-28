@@ -94,14 +94,7 @@ pub trait Database {
         tx: &mut sqlx::Transaction<Self::DB>,
         keyset_id: &String,
         keyset_public_key: &String,
-        maturity_date: &Option<i64>,
     ) -> Result<(), MokshaMintError>;
-
-    async fn get_mint_keyset_maturity_date(
-        &self,
-        tx: &mut sqlx::Transaction<Self::DB>,
-        keyset_id: &String,
-    ) -> Result<i64, MokshaMintError>;
 
     async fn check_bitcredit_quote(
         &self,
