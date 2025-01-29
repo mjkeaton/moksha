@@ -10,10 +10,8 @@ use moksha_core::{
 
 use super::Database;
 use crate::{config::DatabaseConfig, error::MokshaMintError, model::Invoice};
-use moksha_core::keyset::MintKeyset;
 use moksha_core::primitives::{BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::Transaction;
 use tracing::instrument;
 use uuid::Uuid;
 
