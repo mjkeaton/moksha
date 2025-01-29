@@ -177,8 +177,13 @@ impl CashuClient for CrossPlatformHttpClient {
         mint_url: &Url,
         bill_id: String,
         bill_keys: BillKeys,
+        maturity_date: i64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError> {
-        let body = PostRequestToMintBitcreditRequest { bill_id, bill_keys };
+        let body = PostRequestToMintBitcreditRequest {
+            bill_id,
+            bill_keys,
+            maturity_date,
+        };
         self.do_post(&mint_url.join("v1/mint/request/bitcredit")?, &body)
             .await
     }

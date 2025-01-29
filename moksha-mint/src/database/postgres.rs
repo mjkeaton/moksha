@@ -8,13 +8,12 @@ use moksha_core::{
     proof::{Proof, Proofs},
 };
 
+use super::Database;
 use crate::{config::DatabaseConfig, error::MokshaMintError, model::Invoice};
 use moksha_core::primitives::{BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint};
 use sqlx::postgres::PgPoolOptions;
 use tracing::instrument;
 use uuid::Uuid;
-
-use super::Database;
 
 #[derive(Clone)]
 pub struct PostgresDB {
@@ -191,12 +190,13 @@ impl Database for PostgresDB {
         id: &String,
     ) -> Result<BitcreditRequestToMint, MokshaMintError> {
         let request_to_mint: BitcreditRequestToMint = sqlx::query!(
-            "SELECT bill_id, bill_key FROM bitcredit_requests_to_mint WHERE bill_id = $1",
+            "SELECT bill_id, bill_key, maturity_date FROM bitcredit_requests_to_mint WHERE bill_id = $1",
             id
         )
         .map(|row| BitcreditRequestToMint {
             bill_id: row.bill_id,
             bill_key: row.bill_key,
+            maturity_date: row.maturity_date.unwrap(),
         })
         .fetch_one(&mut **tx)
         .await?;
@@ -320,9 +320,10 @@ impl Database for PostgresDB {
         request_to_mint: &BitcreditRequestToMint,
     ) -> Result<(), MokshaMintError> {
         sqlx::query!(
-            "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key) VALUES ($1, $2)",
+            "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key, maturity_date) VALUES ($1, $2, $3)",
             request_to_mint.bill_id,
             request_to_mint.bill_key,
+            request_to_mint.maturity_date,
         )
         .execute(&mut **tx)
         .await?;

@@ -14,6 +14,7 @@ use moksha_core::{
 };
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use tracing::{debug, instrument};
 use uuid::Uuid;
 
@@ -22,9 +23,12 @@ use crate::{
     config::{BtcOnchainConfig, MintConfig},
     error::MokshaMintError,
     mint::Mint,
+    time,
 };
 use chrono::{Duration, Utc};
-use moksha_core::keyset::MintKeyset;
+use moksha_core::amount::Amount;
+use moksha_core::blind::{BlindedMessage, BlindedSignature};
+use moksha_core::keyset::{KeysetId, MintKeyset};
 use moksha_core::primitives::{
     BillKeys, BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint,
     CheckBitcreditQuoteResponse, ParamsBitcreditGetKeysetsById, ParamsBitcreditQuoteCheck,
@@ -32,8 +36,15 @@ use moksha_core::primitives::{
     PostMintQuoteBitcreditRequest, PostMintQuoteBitcreditResponse,
     PostRequestToMintBitcreditRequest, PostRequestToMintBitcreditResponse,
 };
+use moksha_wallet::error::MokshaWalletError;
+use moksha_wallet::http::CrossPlatformHttpClient;
+use moksha_wallet::localstore::sqlite::SqliteLocalStore;
+use moksha_wallet::localstore::WalletKeyset;
+use moksha_wallet::wallet::Wallet;
 use std::str::FromStr;
+use std::{fs, thread};
 use tracing::log::error;
+use url::Url;
 
 #[utoipa::path(
         post,
@@ -106,7 +117,7 @@ pub async fn mjk_get_keysets(
 #[instrument(skip(state), err)]
 pub async fn mjk_get_keys(
     params: Path<ParamsGetKeys>,
-    state: State<Mint>
+    state: State<Mint>,
 ) -> Result<Json<KeysResponse>, MokshaMintError> {
     mjk_get_keys_by_id(params, state).await
 }
@@ -162,9 +173,23 @@ pub async fn mjk_post_swap(
 
     tx.commit().await?;
 
-    let response = mint
-        .swap(&swap_request.inputs, &swap_request.outputs, &keyset)
-        .await?;
+    let current_timestamp = time::TimeApi::get_atomic_time().await.timestamp;
+
+    println!("Current timestamp: {}", current_timestamp);
+    println!("Maturity_date timestamp: {}", request_to_mint.maturity_date);
+
+    let response;
+
+    if request_to_mint.maturity_date <= current_timestamp as i64 {
+        //if credit keyset timestamp <= current timestamp --> return debit token
+        response = mint
+            .swap(&swap_request.inputs, &swap_request.outputs, &mint.keyset)
+            .await?;
+    } else {
+        response = mint
+            .swap(&swap_request.inputs, &swap_request.outputs, &keyset)
+            .await?;
+    }
 
     Ok(Json(PostSwapResponse {
         signatures: response,
@@ -205,9 +230,7 @@ pub async fn get_keys(
     )
 )]
 #[instrument(skip(mint), err)]
-pub async fn get_keys_old(
-    State(mint): State<Mint>,
-) -> Result<Json<KeysResponse>, MokshaMintError> {
+pub async fn get_keys_old(State(mint): State<Mint>) -> Result<Json<KeysResponse>, MokshaMintError> {
     Ok(Json(KeysResponse {
         keysets: vec![KeyResponse {
             id: mint.keyset.keyset_id.clone(),
@@ -218,9 +241,9 @@ pub async fn get_keys_old(
 }
 
 #[utoipa::path(
-    get,
-    path = "/v1/keys/{id}/{unit}",
-    responses(
+        get,
+        path = "/v1/keys/{id}/{unit}",
+        responses(
             (status = 200, description = "get keys by id", body = [KeysResponse])
     ),
     params(
@@ -303,9 +326,7 @@ pub async fn get_keysets(
     )
 )]
 #[instrument(skip(mint), err)]
-pub async fn get_keysets_old(
-    State(mint): State<Mint>,
-) -> Result<Json<Keysets>, MokshaMintError> {
+pub async fn get_keysets_old(State(mint): State<Mint>) -> Result<Json<Keysets>, MokshaMintError> {
     Ok(Json(Keysets::new(
         mint.keyset.keyset_id,
         CurrencyUnit::Sat,
@@ -341,6 +362,8 @@ pub async fn get_keysets_by_id(
         params.id.clone(),
     );
 
+    //add maturity date in request to mint
+    //remove maturity date from get keysets and get keys
     match mint
         .db
         .add_mint_keyset(&mut tx, &keys.keyset_id, &keys.mint_pubkey.to_string())
@@ -439,6 +462,7 @@ pub async fn post_request_to_mint_bitcredit(
     let request_to_mint = BitcreditRequestToMint {
         bill_key: request.bill_keys.private_key_pem.clone(),
         bill_id: request.bill_id.clone(),
+        maturity_date: request.maturity_date.clone(),
     };
 
     write_bill_keys_to_file(
@@ -513,6 +537,7 @@ pub async fn post_mint_bolt11(
     )
 )]
 #[instrument(name = "post_mint_bitcredit", fields(quote_id = %request.quote), skip_all, err)]
+#[axum::debug_handler]
 pub async fn post_mint_bitcredit(
     State(mint): State<Mint>,
     Json(request): Json<PostMintBitcreditRequest>,
@@ -528,6 +553,14 @@ pub async fn post_mint_bitcredit(
             false,
         )
         .await?;
+
+    //TODO: here we should generate mint fee
+    // let mint_clone = mint.clone();
+    //
+    // let mint_signatures = thread::spawn(move || generate_mint_fee(Amount(10), mint_clone))
+    //     .join()
+    //     .expect("Thread panicked").unwrap();
+    // println!("{:#?}", mint_signatures);
 
     let old_quote = &mint
         .db
@@ -546,6 +579,97 @@ pub async fn post_mint_bitcredit(
         .await?;
     tx.commit().await?;
     Ok(Json(PostMintBitcreditResponse { signatures }))
+}
+
+#[tokio::main]
+#[instrument(level = "debug", skip_all, err)]
+async fn generate_mint_fee(
+    amount: Amount,
+    mint: Mint,
+) -> Result<Vec<BlindedSignature>, MokshaMintError> {
+    init_wallet().await;
+
+    let wallet = create_mint_wallet().await;
+
+    let split_amount = amount.split();
+
+    println!("{:#?}", split_amount);
+    let secret_range = wallet
+        .create_secrets(
+            &KeysetId::new(&mint.keyset.keyset_id).unwrap(),
+            split_amount.len() as u32,
+        )
+        .await
+        .unwrap();
+
+    let blinded_messages = split_amount
+        .into_iter()
+        .zip(secret_range)
+        .map(|(amount, (secret, blinding_factor))| {
+            let b_ = wallet.dhke.step1_alice(&secret, &blinding_factor)?;
+            Ok((
+                BlindedMessage {
+                    amount,
+                    b_,
+                    id: mint.keyset.keyset_id.to_string(),
+                },
+                blinding_factor,
+                secret,
+            ))
+        })
+        .collect::<Result<Vec<(_, _, _)>, MokshaWalletError>>()
+        .unwrap();
+
+    let blinded_message = blinded_messages
+        .clone()
+        .into_iter()
+        .map(|(msg, _, _)| msg)
+        .collect::<Vec<BlindedMessage>>();
+
+    let signatures = mint.create_blinded_signatures(&blinded_message, &mint.keyset);
+
+    signatures
+}
+
+async fn create_mint_wallet() -> Wallet<SqliteLocalStore, CrossPlatformHttpClient> {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+        .with_localstore(localstore)
+        .build()
+        .await
+        .expect("Could not create wallet");
+
+    wallet
+}
+
+pub async fn init_wallet() {
+    let dir = PathBuf::from("./data/wallet".to_string());
+    if !dir.exists() {
+        fs::create_dir_all(dir.clone()).unwrap();
+    }
+    let db_path = dir.join("wallet.db").to_str().unwrap().to_string();
+
+    let _localstore = SqliteLocalStore::with_path(db_path.clone())
+        .await
+        .expect("Cannot parse local store");
+
+    // //TODO: take from params
+    // let mint_url = Url::parse(CONFIG.mint_url.as_str()).expect("Invalid url");
+    //
+    // let identity: Identity = read_identity_from_file();
+    // let bitcoin_key = identity.node_id.clone();
+    //
+    // let wallet: Wallet<_, CrossPlatformHttpClient> = Wallet::builder()
+    //     .with_localstore(localstore)
+    //     .build()
+    //     .await
+    //     .expect("Could not create wallet");
 }
 
 #[utoipa::path(
@@ -774,9 +898,9 @@ pub async fn get_info(State(mint): State<Mint>) -> Result<Json<MintInfoResponse>
                 .contact_nostr
                 .map(|nostr| vec!["nostr".to_owned(), nostr]),
         ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<Vec<String>>>(),
+        .into_iter()
+        .flatten()
+        .collect::<Vec<Vec<String>>>(),
     );
 
     let mint_info = MintInfoResponse {
@@ -812,11 +936,11 @@ fn write_bill_keys_to_file(bill_name: String, private_key: String, public_key: S
     };
 
     //TODO: this static path only for testing. Remove it
-    let output_path = "/home/mtbitcr/RustroverProjects/E-Bills/bills_keys".to_string()
-        + "/"
-        + bill_name.as_str()
-        + ".json";
-    let mut file = File::create(output_path.clone()).unwrap();
-    file.write_all(serde_json::to_string_pretty(&keys).unwrap().as_bytes())
-        .unwrap();
+    // let output_path = "/home/mtbitcr/RustroverProjects/E-Bills/bills_keys".to_string()
+    //     + "/"
+    //     + bill_name.as_str()
+    //     + ".json";
+    // let mut file = File::create(output_path.clone()).unwrap();
+    // file.write_all(serde_json::to_string_pretty(&keys).unwrap().as_bytes())
+    //     .unwrap();
 }

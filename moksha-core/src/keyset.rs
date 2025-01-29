@@ -13,6 +13,7 @@
 use hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use utoipa::ToSchema;
 
 use bitcoin_hashes::{sha256, Hash};
@@ -44,7 +45,11 @@ impl MintKeyset {
         }
     }
 
-    pub fn new_with_id(master_key: &str, derivation_path: &str, id: String) -> Self {
+    pub fn new_with_id(
+        master_key: &str,
+        derivation_path: &str,
+        id: String,
+    ) -> Self {
         let priv_keys = derive_keys(master_key, derivation_path);
         let pub_keys = derive_pubkeys(&priv_keys);
         Self {
@@ -73,7 +78,11 @@ pub struct Keyset {
 impl Keysets {
     pub fn new(id: String, unit: CurrencyUnit, active: bool) -> Self {
         Self {
-            keysets: vec![Keyset { id, unit, active }],
+            keysets: vec![Keyset {
+                id,
+                unit,
+                active,
+            }],
         }
     }
 
@@ -118,9 +127,9 @@ impl KeysetId {
     }
 }
 
-impl ToString for KeysetId {
-    fn to_string(&self) -> String {
-        format!("{}{}", self.0.to_string(), self.1)
+impl Display for KeysetId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", format!("{}{}", self.0.to_string(), self.1))
     }
 }
 
@@ -138,11 +147,11 @@ impl From<String> for KeysetIdType {
     }
 }
 
-impl ToString for KeysetIdType {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for KeysetIdType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
             KeysetIdType::V1 => "00".to_string(),
-        }
+        })
     }
 }
 

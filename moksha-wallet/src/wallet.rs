@@ -40,7 +40,7 @@ where
     C: CashuClient,
 {
     client: C,
-    dhke: Dhke,
+    pub dhke: Dhke,
     localstore: L,
     secret: DeterministicSecret,
 }
@@ -177,9 +177,10 @@ where
         mint_url: &Url,
         bill_id: String,
         bill_keys: BillKeys,
+        maturity_date: i64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError> {
         self.client
-            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys)
+            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys, maturity_date)
             .await
     }
 
@@ -352,6 +353,7 @@ where
                 }
             };
 
+            //this is test data
             let wallet_keyset = WalletKeyset::new(
                 &keyset_id,
                 mint_url,
@@ -604,7 +606,7 @@ where
         Ok(melt_response)
     }
 
-    async fn create_secrets(
+    pub async fn create_secrets(
         &self,
         keyset_id: &KeysetId,
         amount: u32,

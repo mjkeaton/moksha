@@ -1,6 +1,6 @@
 -- Add the column without the NOT NULL constraint
 ALTER TABLE onchain_melt_quotes
-ADD COLUMN description text;
+ADD COLUMN IF NOT EXISTS description text;
 
 -- Set all existing rows to an empty string
 UPDATE onchain_melt_quotes

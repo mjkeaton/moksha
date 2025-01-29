@@ -170,6 +170,7 @@ impl From<BitcreditMintQuote> for PostMintQuoteBitcreditResponse {
 pub struct PostRequestToMintBitcreditRequest {
     pub bill_id: String,
     pub bill_keys: BillKeys,
+    pub maturity_date: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -286,6 +287,7 @@ pub struct BitcreditMintQuote {
 pub struct BitcreditRequestToMint {
     pub bill_id: String,
     pub bill_key: String,
+    pub maturity_date: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

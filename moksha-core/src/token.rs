@@ -128,24 +128,23 @@ impl TokenV3 {
         currency_unit: Option<CurrencyUnit>,
     ) -> Result<Self, MokshaCoreError> {
         let data = data.into();
-        let token;
-        match currency_unit {
+        let token= match currency_unit {
             Some(CurrencyUnit::CrSat) => {
-                token = data
+                data
                     .strip_prefix(TOKEN_PREFIX_BITCREDIT)
-                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?
             }
             Some(_) => {
-                token = data
+                data
                     .strip_prefix(TOKEN_PREFIX_V3)
-                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?
             }
             None => {
-                token = data
+                data
                     .strip_prefix(TOKEN_PREFIX_V3)
-                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?;
+                    .ok_or(MokshaCoreError::InvalidTokenPrefix)?
             }
-        }
+        };
 
         let json = general_purpose::URL_SAFE_NO_PAD
             .decode(token.as_bytes())

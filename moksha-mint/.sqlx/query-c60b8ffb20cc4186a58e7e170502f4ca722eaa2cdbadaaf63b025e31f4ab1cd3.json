@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key, maturity_date) VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c60b8ffb20cc4186a58e7e170502f4ca722eaa2cdbadaaf63b025e31f4ab1cd3"
+}
