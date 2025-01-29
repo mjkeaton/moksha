@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT bill_id, bill_key, maturity_date FROM bitcredit_requests_to_mint WHERE bill_id = $1",
+  "query": "SELECT bill_id, bill_key, maturity_date, bill_amount FROM bitcredit_requests_to_mint WHERE bill_id = $1",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "maturity_date",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "bill_amount",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "0c2b29d95796af8abf100a9e44c737366d02987aa722abfa461e5ea9089426b5"
+  "hash": "670ff6cbe93c5423d124ead3cf5605b8581593e3a834e1214a168c80247a55f7"
 }
