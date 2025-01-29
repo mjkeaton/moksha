@@ -190,13 +190,14 @@ impl Database for PostgresDB {
         id: &String,
     ) -> Result<BitcreditRequestToMint, MokshaMintError> {
         let request_to_mint: BitcreditRequestToMint = sqlx::query!(
-            "SELECT bill_id, bill_key, maturity_date FROM bitcredit_requests_to_mint WHERE bill_id = $1",
+            "SELECT bill_id, bill_key, maturity_date, bill_amount FROM bitcredit_requests_to_mint WHERE bill_id = $1",
             id
         )
         .map(|row| BitcreditRequestToMint {
             bill_id: row.bill_id,
             bill_key: row.bill_key,
             maturity_date: row.maturity_date.unwrap(),
+            bill_amount: row.bill_amount.unwrap() as u64,
         })
         .fetch_one(&mut **tx)
         .await?;
@@ -320,10 +321,11 @@ impl Database for PostgresDB {
         request_to_mint: &BitcreditRequestToMint,
     ) -> Result<(), MokshaMintError> {
         sqlx::query!(
-            "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key, maturity_date) VALUES ($1, $2, $3)",
+            "INSERT INTO bitcredit_requests_to_mint (bill_id, bill_key, maturity_date, bill_amount) VALUES ($1, $2, $3, $4)",
             request_to_mint.bill_id,
             request_to_mint.bill_key,
             request_to_mint.maturity_date,
+            request_to_mint.bill_amount as i32,
         )
         .execute(&mut **tx)
         .await?;

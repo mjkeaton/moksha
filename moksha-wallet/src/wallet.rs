@@ -41,7 +41,7 @@ where
 {
     client: C,
     pub dhke: Dhke,
-    localstore: L,
+    pub localstore: L,
     secret: DeterministicSecret,
 }
 
@@ -178,9 +178,10 @@ where
         bill_id: String,
         bill_keys: BillKeys,
         maturity_date: i64,
+        bill_amount: u64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError> {
         self.client
-            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys, maturity_date)
+            .post_request_to_mint_bitcredit(mint_url, bill_id, bill_keys, maturity_date, bill_amount)
             .await
     }
 

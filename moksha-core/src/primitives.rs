@@ -171,6 +171,7 @@ pub struct PostRequestToMintBitcreditRequest {
     pub bill_id: String,
     pub bill_keys: BillKeys,
     pub maturity_date: i64,
+    pub bill_amount: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -288,6 +289,7 @@ pub struct BitcreditRequestToMint {
     pub bill_id: String,
     pub bill_key: String,
     pub maturity_date: i64,
+    pub bill_amount: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
