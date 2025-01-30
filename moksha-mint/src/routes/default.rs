@@ -573,15 +573,13 @@ pub async fn post_mint_bitcredit(
 
     let mut mint_clone = mint.clone();
     mint_clone.keyset = mint.keyset;
-    let token = thread::spawn(move || {
-        generate_mint_fee(
-            Amount(request_to_mint.bill_amount),
-            mint_clone,
-            quote.bill_id.clone(),
-        )
-    })
-    .join()
-    .expect("Thread panicked");
+    let fee_amount = Amount(request_to_mint.bill_amount - quote.amount);
+    let fee_amount_to_show = fee_amount.clone();
+    let token =
+        thread::spawn(move || generate_mint_fee(fee_amount, mint_clone, quote.bill_id.clone()))
+            .join()
+            .expect("Thread panicked");
+    println!("AMOUNT FOR WILDCAT FEE: {:#?}", fee_amount_to_show);
     println!("DISCOUNT FEE FOR WILDCAT: {:#?}", token);
 
     let old_quote = &mint
