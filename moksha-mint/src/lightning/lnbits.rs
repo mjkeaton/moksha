@@ -73,9 +73,9 @@ impl Lightning for LnbitsLightning {
                 amount,
                 unit: "sat".to_string(),
                 memo: None,
-                expiry: Some(10000),
+                expiry: None,
                 webhook: None,
-                internal: None,
+                internal: Option::from(false),
             })
             .await?)
     }

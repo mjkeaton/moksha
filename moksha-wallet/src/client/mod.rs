@@ -124,6 +124,7 @@ pub trait CashuClient {
         bill_id: String,
         bill_keys: BillKeys,
         maturity_date: i64,
+        bill_amount: u64,
     ) -> Result<PostRequestToMintBitcreditResponse, MokshaWalletError>;
 
     async fn check_bitcredit_quote(

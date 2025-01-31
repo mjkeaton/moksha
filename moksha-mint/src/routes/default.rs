@@ -29,6 +29,7 @@ use chrono::{Duration, Utc};
 use moksha_core::amount::Amount;
 use moksha_core::blind::{BlindedMessage, BlindedSignature};
 use moksha_core::keyset::{KeysetId, MintKeyset};
+use moksha_core::primitives::CurrencyUnit::CrSat;
 use moksha_core::primitives::{
     BillKeys, BitcreditMintQuote, BitcreditQuoteCheck, BitcreditRequestToMint,
     CheckBitcreditQuoteResponse, ParamsBitcreditGetKeysetsById, ParamsBitcreditQuoteCheck,
@@ -36,15 +37,19 @@ use moksha_core::primitives::{
     PostMintQuoteBitcreditRequest, PostMintQuoteBitcreditResponse,
     PostRequestToMintBitcreditRequest, PostRequestToMintBitcreditResponse,
 };
+use moksha_core::proof::Proof;
+use moksha_core::token::TokenV3;
 use moksha_wallet::error::MokshaWalletError;
 use moksha_wallet::http::CrossPlatformHttpClient;
 use moksha_wallet::localstore::sqlite::SqliteLocalStore;
-use moksha_wallet::localstore::WalletKeyset;
+use moksha_wallet::localstore::{LocalStore, WalletKeyset};
 use moksha_wallet::wallet::Wallet;
 use std::str::FromStr;
 use std::{fs, thread};
 use tracing::log::error;
 use url::Url;
+
+pub const MINT_URL: &str = "http://127.0.0.1:3338";
 
 #[utoipa::path(
         post,
@@ -463,6 +468,7 @@ pub async fn post_request_to_mint_bitcredit(
         bill_key: request.bill_keys.private_key_pem.clone(),
         bill_id: request.bill_id.clone(),
         maturity_date: request.maturity_date.clone(),
+        bill_amount: request.bill_amount,
     };
 
     write_bill_keys_to_file(
@@ -543,6 +549,17 @@ pub async fn post_mint_bitcredit(
     Json(request): Json<PostMintBitcreditRequest>,
 ) -> Result<Json<PostMintBitcreditResponse>, MokshaMintError> {
     let mut tx = mint.db.begin_tx().await?;
+
+    let quote = mint
+        .db
+        .get_bitcredit_mint_quote(&mut tx, &Uuid::from_str(request.quote.as_str())?)
+        .await?;
+
+    let request_to_mint = mint
+        .db
+        .get_bitcredit_request_to_mint(&mut tx, &quote.bill_id)
+        .await?;
+
     let signatures = mint
         .mint_tokens(
             &mut tx,
@@ -554,13 +571,16 @@ pub async fn post_mint_bitcredit(
         )
         .await?;
 
-    //TODO: here we should generate mint fee
-    // let mint_clone = mint.clone();
-    //
-    // let mint_signatures = thread::spawn(move || generate_mint_fee(Amount(10), mint_clone))
-    //     .join()
-    //     .expect("Thread panicked").unwrap();
-    // println!("{:#?}", mint_signatures);
+    let mut mint_clone = mint.clone();
+    mint_clone.keyset = mint.keyset;
+    let fee_amount = Amount(request_to_mint.bill_amount - quote.amount);
+    let fee_amount_to_show = fee_amount.clone();
+    let token =
+        thread::spawn(move || generate_mint_fee(fee_amount, mint_clone, quote.bill_id.clone()))
+            .join()
+            .expect("Thread panicked");
+    println!("AMOUNT FOR WILDCAT FEE: {:#?}", fee_amount_to_show);
+    println!("DISCOUNT FEE FOR WILDCAT: {:#?}", token);
 
     let old_quote = &mint
         .db
@@ -582,18 +602,31 @@ pub async fn post_mint_bitcredit(
 }
 
 #[tokio::main]
-#[instrument(level = "debug", skip_all, err)]
-async fn generate_mint_fee(
-    amount: Amount,
-    mint: Mint,
-) -> Result<Vec<BlindedSignature>, MokshaMintError> {
+async fn generate_mint_fee(amount: Amount, mut mint: Mint, bill_id: String) -> String {
     init_wallet().await;
 
     let wallet = create_mint_wallet().await;
 
     let split_amount = amount.split();
 
-    println!("{:#?}", split_amount);
+    let mut tx = mint.db.begin_tx().await.unwrap();
+
+    let request_to_mint = &mint
+        .db
+        .get_bitcredit_request_to_mint(&mut tx, &bill_id)
+        .await
+        .unwrap();
+
+    let keys = MintKeyset::new_with_id(
+        request_to_mint.bill_key.as_str(),
+        String::default().as_str(),
+        bill_id.clone(),
+    );
+
+    mint.keyset = keys;
+
+    add_keyset(wallet.clone(), mint.keyset.clone()).await;
+
     let secret_range = wallet
         .create_secrets(
             &KeysetId::new(&mint.keyset.keyset_id).unwrap(),
@@ -626,9 +659,61 @@ async fn generate_mint_fee(
         .map(|(msg, _, _)| msg)
         .collect::<Vec<BlindedMessage>>();
 
-    let signatures = mint.create_blinded_signatures(&blinded_message, &mint.keyset);
+    let signatures = mint
+        .create_blinded_signatures(&blinded_message, &mint.keyset)
+        .unwrap();
 
-    signatures
+    let wallet_keyset = WalletKeyset::new(
+        &KeysetId::new(&mint.keyset.keyset_id).unwrap(),
+        &Url::parse(MINT_URL).expect("Invalid url"),
+        &CrSat,
+        0,
+        mint.keyset.public_keys,
+        true,
+    );
+
+    let current_keyset_id = wallet_keyset.keyset_id.to_string();
+
+    let proofs = signatures
+        .iter()
+        .zip(blinded_messages)
+        .map(|(p, (_, priv_key, secret))| {
+            let key = wallet_keyset
+                .public_keys
+                .get(&p.amount)
+                .expect("msg amount not found in mint keys");
+            let pub_alice = wallet.dhke.step3_alice(p.c_, priv_key, *key).unwrap();
+            Proof::new(p.amount, secret, pub_alice, current_keyset_id.clone())
+        })
+        .collect::<Vec<Proof>>()
+        .into();
+
+    let tokens: TokenV3 = (Url::parse(MINT_URL).expect("Invalid url"), CrSat, proofs).into();
+    let token = tokens.serialize(Option::from(CrSat)).unwrap();
+    token
+}
+
+async fn add_keyset(
+    wallet: Wallet<SqliteLocalStore, CrossPlatformHttpClient>,
+    mint_keyset: MintKeyset,
+) {
+    let mut tx = wallet.localstore.begin_tx().await.unwrap();
+
+    let wallet_keyset = WalletKeyset::new(
+        &KeysetId::new(&mint_keyset.keyset_id).unwrap(),
+        &Url::parse(MINT_URL).expect("Invalid url"),
+        &CrSat,
+        0,
+        mint_keyset.public_keys,
+        true,
+    );
+
+    wallet
+        .localstore
+        .upsert_keyset(&mut tx, &wallet_keyset)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
 }
 
 async fn create_mint_wallet() -> Wallet<SqliteLocalStore, CrossPlatformHttpClient> {
